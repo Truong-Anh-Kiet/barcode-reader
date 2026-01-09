@@ -1,0 +1,14 @@
+# Virtual env
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# uv
+.uv/
+uv.lock
+
+# OS / Editor
+.vscode/
+.DS_Store
