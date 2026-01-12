@@ -9,6 +9,8 @@ dependencies = [
     "matplotlib>=3.10.8",
     "numpy>=2.4.0",
     "opencv-python>=4.11.0.86",
+    "pydantic>=2.12.5",
     "pyzbar>=0.1.9",
+    "uvicorn>=0.40.0",
     "zxing-cpp>=2.3.0",
 ]
