@@ -1,24 +1,55 @@
 """
 This module initializes the FastAPI application for the Clean Barcode API.
-It sets up the necessary dependencies and starts the server.
+
+It sets up the necessary dependencies, creates database tables on startup,
+and starts the server using Uvicorn.
 """
 
-import uvicorn
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
+import uvicorn
+from infrastructure.database import engine, Base
+from presentation.api import router as barcode_router
 
-from src.application.use_cases import ScanBarcodeUseCase
-from src.infrastructure.detector import PyZbarDetector
-from src.infrastructure.repository import InMemoryBarcodeRepository
-from src.presentation.api import get_barcode_router
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """
+    Manages the lifespan of the FastAPI application.
 
-detector = PyZbarDetector()
-repository = InMemoryBarcodeRepository()
+    Handles startup (create database tables) and shutdown events.
 
-scan_use_case = ScanBarcodeUseCase(detector, repository)
+    Args:
+        _app (FastAPI): The FastAPI app instance.
 
-app = FastAPI(title="Clean Barcode API")
+    Yields:
+        None
+    """
+    # Startup:
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    # Shutdown: (add cleanup if needed, e.g., close connections)
 
-app.include_router(get_barcode_router(scan_use_case))
+app = FastAPI(
+    title="Clean Barcode API",
+    description="API for scanning barcodes using Clean Architecture principles.",
+    version="1.0.0",
+    lifespan=lifespan
+)
+
+app.include_router(barcode_router, prefix="/barcodes", tags=["barcodes"])
+
+@app.get("/")
+async def root():
+    """
+    Handles the root endpoint of the API.
+
+    Provides a simple message to confirm the API is running.
+
+    Returns:
+        dict: A dictionary containing a status message.
+    """
+    return {"message": "Barcode Scanner API is running. Go to /docs for API documentation."}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

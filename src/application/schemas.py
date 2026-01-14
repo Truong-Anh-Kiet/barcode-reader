@@ -1,21 +1,25 @@
 """
 This module defines schemas for barcode scanning responses.
 
-It includes models for bounding boxes, barcode responses, and scan results.
+It includes models for bounding boxes, barcode responses, and scan results
+using Pydantic for validation and serialization.
 """
 
-from typing import List
+from typing import List, Optional
+from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-
 class BoundingBoxSchema(BaseModel):
-    """Schema representing an axis-aligned bounding box.
+    """
+    Schema representing an axis-aligned bounding box.
+
     Attributes:
         x (int): X-coordinate of the top-left corner (pixels).
         y (int): Y-coordinate of the top-left corner (pixels).
         width (int): Width of the bounding box (pixels).
         height (int): Height of the bounding box (pixels).
+
     Notes:
         Coordinates are relative to the image origin (top-left). All values are integers.
     """
@@ -25,7 +29,8 @@ class BoundingBoxSchema(BaseModel):
     height: int
 
 class BarcodeResponse(BaseModel):
-    """Response model for a detected barcode.
+    """
+    Response model for a detected barcode.
 
     Attributes:
         content (str): The decoded barcode string (e.g. "8934565010015").
@@ -37,9 +42,12 @@ class BarcodeResponse(BaseModel):
     type: str = Field(..., example="EAN13")
     confidence: float = Field(default=1.0, ge=0, le=1.0)
     box: BoundingBoxSchema
+    image_url: Optional[str] = None
+    processed_image_url: Optional[str] = None
 
 class ScanResultResponse(BaseModel):
-    """Response model for barcode scan results.
+    """
+    Response model for barcode scan results.
 
     Attributes:
         success (bool): True if the scan operation completed successfully.
@@ -51,3 +59,38 @@ class ScanResultResponse(BaseModel):
     count: int
     data: List[BarcodeResponse]
     message: str = "Success"
+
+class BarcodeItem(BaseModel):
+    """
+    Schema for a single barcode item retrieved from the database.
+
+    Attributes:
+        id (int): Unique identifier of the barcode.
+        content (str): The decoded barcode string.
+        barcode_type (str): Type of the barcode.
+        bounding_box (List[int]): Bounding box as [x, y, w, h].
+        created_at (datetime): Timestamp when the barcode was created.
+    """
+    id: int
+    content: str
+    barcode_type: str
+    bounding_box: List[int]
+    created_at: datetime
+    image_url: Optional[str] = None
+    processed_image_url: Optional[str] = None
+
+class GetBarcodesResponse(BaseModel):
+    """
+    Response model for retrieving all barcodes.
+
+    Attributes:
+        success (bool): True if the operation completed successfully.
+        count (int): Number of barcode items returned.
+        data (List[BarcodeItem]): List of barcode items.
+        message (str): Informational message (defaults to "Success").
+    """
+    success: bool
+    count: int
+    data: List[BarcodeItem]
+    message: str = "Success"
+    
