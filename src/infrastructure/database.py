@@ -5,7 +5,7 @@ Defines the SQLAlchemy Base, engine, and async session setup for PostgreSQL.
 Also defines the BarcodeModel representing the database table structure.
 """
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import AsyncGenerator
 from dotenv import load_dotenv
 from sqlalchemy import ARRAY, Column, DateTime, Integer, String
@@ -51,7 +51,7 @@ class BarcodeModel(Base):
     bounding_box = Column(ARRAY(Integer), nullable=False)
     image_url = Column(String, nullable=True)
     processed_image_url = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.now(datetime.timezone.utc), nullable=False)
+    created_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
 
 engine = create_async_engine(DATABASE_URL, echo=False, future=True)
 

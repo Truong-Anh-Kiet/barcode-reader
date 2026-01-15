@@ -54,7 +54,7 @@ class IBarcodeRepository(ABC):
         Retrieves all saved barcode models.
 
         Returns:
-            List[BarcodeModel]: List of all barcode models in the database.
+            List[BarcodeResult]: List of all barcode models in the database.
         """
 
 class IImageStorage(ABC):
