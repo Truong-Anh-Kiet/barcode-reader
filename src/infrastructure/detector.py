@@ -1,7 +1,7 @@
 """
-This module contains the implementation of a barcode detector using the ZXing library.
+This module contains the implementation of a barcode detector using pyzbar library.
 
-The ZxingDetector class provides functionality to detect and decode barcodes from
+The PyzbarDetector class provides functionality to detect and decode barcodes from
 images represented as byte arrays. It returns the results as a list of BarcodeResult objects.
 """
 
@@ -9,54 +9,69 @@ from typing import List
 
 import cv2
 import numpy as np
-import zxingcpp
+from pyzbar.pyzbar import decode
 
 from domain.entities import BarcodeResult
 from domain.interfaces import IBarcodeDetector
 
-class ZxingDetector(IBarcodeDetector):
+
+class PyzbarDetector(IBarcodeDetector):
     """
-    A barcode detector implementation using the ZXing library.
+    A barcode detector implementation using the pyzbar library (based on ZBar).
 
-    This class decodes images from bytes, processes them with ZXing,
-    and extracts barcode metadata including content, type, and bounding box.
+    This is a reliable, fast alternative to zxingcpp, especially good for:
+    - 1D barcodes: EAN13, UPC, Code128, Code39, etc.
+    - QR codes and some other 2D formats
 
-    Attributes:
-        None (implements IBarcodeDetector interface).
+    Works well on Windows, Linux, and most environments after installing libzbar0.
     """
 
     def detect(self, image_bytes: bytes) -> List[BarcodeResult]:
         """
-        Detects barcodes in the given image bytes.
-
-        Processes the image using OpenCV and ZXing, then maps results to BarcodeResult entities.
+        Detects barcodes in the given image bytes using pyzbar.
 
         Args:
             image_bytes (bytes): Raw binary data of the image.
 
         Returns:
-            List[BarcodeResult]: List of detected barcode results. 
+            List[BarcodeResult]: List of detected barcode results.
             Empty if no barcodes or invalid image.
         """
+        # Decode bytes to OpenCV image (BGR format)
         nparr = np.frombuffer(image_bytes, np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+
         if img is None:
+            print("OpenCV could not decode the image!")
             return []
 
-        results = zxingcpp.read_barcodes(img)
+        # pyzbar works directly with the BGR image
+        barcodes = decode(img)
+
+        if not barcodes:
+            print("pyzbar: No barcodes detected in the image.")
+            return []
+
         barcode_results = []
-        for res in results:
-            position = res.position
-            x_coords = [position.top_left.x, position.top_right.x,
-                        position.bottom_right.x, position.bottom_left.x]
-            y_coords = [position.top_left.y, position.top_right.y,
-                        position.bottom_right.y, position.bottom_left.y]
-            x, y = min(x_coords), min(y_coords)
-            w, h = max(x_coords) - x, max(y_coords) - y
+
+        for barcode in barcodes:
+            # Extract content and type
+            content = barcode.data.decode('utf-8')
+            barcode_type = barcode.type  # e.g. 'EAN13', 'QRCODE', 'CODE128'...
+
+            # Get bounding box (left, top, width, height) - exactly what we need
+            rect = barcode.rect
+            x, y, w, h = rect.left, rect.top, rect.width, rect.height
+
+            # Skip invalid bounding boxes
+            if w <= 0 or h <= 0:
+                continue
+
             barcode_results.append(BarcodeResult(
-                content=res.text,
-                barcode_type=str(res.format).rsplit('.', maxsplit=1)[-1],
+                content=content,
+                barcode_type=barcode_type,
                 bounding_box=(int(x), int(y), int(w), int(h))
             ))
+
+        print(f"pyzbar found {len(barcode_results)} barcode(s)")
         return barcode_results
-    

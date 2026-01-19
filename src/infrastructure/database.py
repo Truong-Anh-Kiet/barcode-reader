@@ -8,10 +8,11 @@ import os
 from datetime import datetime, timezone
 from typing import AsyncGenerator
 from dotenv import load_dotenv
+from fastapi_users.db import SQLAlchemyBaseUserTable
 from sqlalchemy import ARRAY, Column, DateTime, Integer, String
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import DeclarativeMeta
+from sqlalchemy.orm import DeclarativeMeta, Mapped, mapped_column
 
 load_dotenv()
 
@@ -51,7 +52,19 @@ class BarcodeModel(Base):
     bounding_box = Column(ARRAY(Integer), nullable=False)
     image_url = Column(String, nullable=True)
     processed_image_url = Column(String, nullable=True)
-    created_at = Column(DateTime, default=datetime.now(timezone.utc), nullable=False)
+    created_at = Column(DateTime(timezone=True),  # ← Thêm timezone=True
+                        default=datetime.now(timezone.utc),  # Giữ default Python nếu cần
+                        nullable=False)
+    
+class UserModel(SQLAlchemyBaseUserTable[int], Base):
+    __tablename__ = "users"
+
+    # Field custom thêm vào
+    full_name: Mapped[str] = mapped_column(String(100), nullable=True)          # Họ tên đầy đủ, có thể NULL
+    phone_number: Mapped[str] = mapped_column(String(15), unique=True, nullable=True)  # Số điện thoại, unique
+    avatar_url: Mapped[str] = mapped_column(String(255), nullable=True)         # Link ảnh đại diện
+    is_premium: Mapped[bool] = mapped_column(default=False)                     # Boolean, mặc định False
+    country: Mapped[str] = mapped_column(String(50), nullable=False, default="Vietnam")
 
 engine = create_async_engine(DATABASE_URL, echo=False, future=True)
 

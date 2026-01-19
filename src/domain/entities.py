@@ -5,9 +5,11 @@ Entities are domain objects that hold business data without behavior.
 """
 
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Tuple, Optional
+from fastapi_users import schemas
 
-@dataclass(frozen=True)
+@dataclass
 class BarcodeResult:
     """
     Represents the result of a barcode detection.
@@ -34,4 +36,13 @@ class BarcodeResult:
             raise ValueError("Bounding box must be a tuple of four integers (x, y, width, height).")
         if self.image_url is not None and not self.image_url.startswith(("http://", "https://")):
             raise ValueError("Image URL must be a valid URL starting with http:// or https://")
-        
+
+@dataclass
+class User:
+    id: Optional[int] = None
+    email: str
+    hashed_password: str
+    is_active: bool = True
+    is_superuser: bool = False
+    is_verified: bool = False
+    created_at: Optional[datetime] = None

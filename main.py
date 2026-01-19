@@ -5,6 +5,11 @@ It sets up the necessary dependencies, creates database tables on startup,
 and starts the server using Uvicorn.
 """
 
+import sys
+import os
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
+
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 import uvicorn

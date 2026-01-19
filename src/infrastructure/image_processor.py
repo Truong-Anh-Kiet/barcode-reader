@@ -42,62 +42,63 @@ class OpenCVImageProcessor(IImageProcessor):
         Returns:
             bytes: Processed image data (JPEG encoded).
         """
-        # 1. Ingestion: Bytes to NumPy array
-        img = cv2.imdecode(np.frombuffer(image_data, np.uint8), cv2.IMREAD_COLOR)
-        if img is None:
-            raise ValueError("Invalid image data")
+        # # 1. Ingestion: Bytes to NumPy array
+        # img = cv2.imdecode(np.frombuffer(image_data, np.uint8), cv2.IMREAD_COLOR)
+        # if img is None:
+        #     raise ValueError("Invalid image data")
 
-        # 2. Resize
-        h, w = img.shape[:2]
-        if max(h, w) > 1024:
-            scale = 1024 / max(h, w)
-            img = cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
+        # # 2. Resize
+        # h, w = img.shape[:2]
+        # if max(h, w) > 1024:
+        #     scale = 1024 / max(h, w)
+        #     img = cv2.resize(img, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA)
 
-        # 3. Grayscale
-        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        # # 3. Grayscale
+        # gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-        # 4. Contrast Enhancement
-        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-        enhanced = clahe.apply(gray)
+        # # 4. Contrast Enhancement
+        # clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+        # enhanced = clahe.apply(gray)
 
-        # 5. Noise Reduction: Gaussian Blur
-        blurred = cv2.GaussianBlur(enhanced, (5, 5), 0)
+        # # 5. Noise Reduction: Gaussian Blur
+        # blurred = cv2.GaussianBlur(enhanced, (5, 5), 0)
 
-        # 6. Adaptive Thresholding
-        binary = cv2.adaptiveThreshold(
-            blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
-        )
+        # # 6. Adaptive Thresholding
+        # binary = cv2.adaptiveThreshold(
+        #     blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
+        # )
 
-        # 7. Edge Detection
-        edges = cv2.Canny(binary, 50, 150)
+        # # 7. Edge Detection
+        # edges = cv2.Canny(binary, 50, 150)
 
-        # 8. Perspective Fix: Detect contours and warp
-        contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        if contours:
-            largest_contour = max(contours, key=cv2.contourArea)
-            if len(largest_contour) >= 4:
-                rect = cv2.minAreaRect(largest_contour)
-                box = cv2.boxPoints(rect)
-                box = np.int0(box)
+        # # 8. Perspective Fix: Detect contours and warp
+        # contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # if contours:
+        #     largest_contour = max(contours, key=cv2.contourArea)
+        #     if len(largest_contour) >= 4:
+        #         rect = cv2.minAreaRect(largest_contour)
+        #         box = cv2.boxPoints(rect)
+        #         box = np.intp(box)
 
-                # Warp perspective to straighten
-                width, height = int(rect[1][0]), int(rect[1][1])
-                src_pts = box.astype("float32")
-                dst_pts = np.array([[0, height-1],[0, 0], [width-1, 0], [width-1, height-1]],
-                                   dtype="float32")
-                perspective_matrix = cv2.getPerspectiveTransform(src_pts, dst_pts)
-                warped = cv2.warpPerspective(img, perspective_matrix, (width, height))
+        #         # Warp perspective to straighten
+        #         width, height = int(rect[1][0]), int(rect[1][1])
+        #         src_pts = box.astype("float32")
+        #         dst_pts = np.array([[0, height-1],[0, 0], [width-1, 0], [width-1, height-1]],
+        #                            dtype="float32")
+        #         perspective_matrix = cv2.getPerspectiveTransform(src_pts, dst_pts)
+        #         warped = cv2.warpPerspective(img, perspective_matrix, (width, height))
 
-                # Convert warped back to grayscale/binary if needed
-                processed_img = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
-            else:
-                processed_img = edges
-        else:
-            processed_img = edges
+        #         # Convert warped back to grayscale/binary if needed
+        #         processed_img = cv2.cvtColor(warped, cv2.COLOR_BGR2GRAY)
+        #     else:
+        #         processed_img = edges
+        # else:
+        #     processed_img = edges
 
-        # Encode back to bytes
-        _, encoded = cv2.imencode('.jpg', processed_img)
-        return encoded.tobytes()
+        # # Encode back to bytes
+        # _, encoded = cv2.imencode('.jpg', processed_img)
+        # return encoded.tobytes()
+        return image_data
 
     def crop_region(self, image_data: bytes, bounding_box: Tuple[int, int, int, int]) -> bytes:
         """
