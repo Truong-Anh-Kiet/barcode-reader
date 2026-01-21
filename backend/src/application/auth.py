@@ -60,15 +60,13 @@ auth_backend = AuthenticationBackend(
 )
 
 # Cách tốt nhất: Dependency function cho get_user_manager
-async def get_user_manager(
-    user_db: SQLAlchemyUserDatabase = Depends(get_user_db)
-) -> AsyncGenerator[UserManager, None]:
-    yield UserManager(user_db)
+def get_user_manager(user_db: SQLAlchemyUserDatabase = Depends(get_user_db)):
+    return UserManager(user_db)
 
 # Khởi tạo FastAPIUsers (SỬA Ở ĐÂY)
 fastapi_users = FastAPIUsers[UserModel, int](
-    get_user_manager,          # positional 1: dependency
-    [auth_backend]             # positional 2: list backends
+    get_user_manager,
+    [auth_backend]
 )
 
 # Dependencies cho current user

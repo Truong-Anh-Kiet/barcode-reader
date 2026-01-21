@@ -6,7 +6,7 @@ barcode results to a repository, following the dependency inversion principle.
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Tuple
+from typing import List, Tuple, Optional
 
 from .entities import BarcodeResult
 
@@ -61,6 +61,12 @@ class IBarcodeRepository(ABC):
     async def delete(self, id: int) -> bool:
         """
         Deletes a barcode by its ID.
+        """
+
+    @abstractmethod
+    async def get_by_id(self, id: int) -> Optional[BarcodeResult]:
+        """
+        Retrieves a single barcode by ID.
         """
         
 class IImageStorage(ABC):

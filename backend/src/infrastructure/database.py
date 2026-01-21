@@ -45,7 +45,7 @@ class BarcodeModel(Base):
                                                  default=lambda: datetime.now(timezone.utc), 
                                                  nullable=False)
     
-class UserModel(SQLAlchemyBaseUserTable[int], Base):
+class UserModel(Base, SQLAlchemyBaseUserTable[int]):    
     """
     SQLAlchemy model representing the 'users' table in the database.
     """

@@ -51,16 +51,18 @@ class ScanBarcodeUseCase:
         # Full preprocessing pipeline
         processed_data = self.processor.process_image(image_data)
 
-        # Multi-scale detection
+        # Upload processed ONCE
+        processed_filename = f"processed_{filename}"
+        try:
+            processed_image_url = self.storage.upload_image(processed_data, processed_filename)
+        except Exception as e:
+            raise ValueError(f"Failed to upload processed image: {str(e)}")
+
+        # Detect
         results = self.processor.multi_scale_detect(processed_data, self.detector)
+
+        # Assign URLs cho tất cả và save
         for item in results:
-            # Post-processing: Crop region and upload crop
-            crop_data = self.processor.crop_region(image_data, item.bounding_box)
-            crop_filename = f"{filename}_crop_{item.content}"
-            try:
-                processed_image_url = self.storage.upload_image(crop_data, crop_filename)
-            except Exception as e:
-                raise ValueError(f"Failed to upload processed image: {str(e)}")
             item.image_url = image_url
             item.processed_image_url = processed_image_url
             await self.repository.save(item)
@@ -103,11 +105,15 @@ class DeleteBarcodeUseCase:
         self.repository = repository
         self.storage = storage
 
-    async def execute(self, id: int, image_url: str, processed_url: str) -> bool:
-        # Delete images first
-        public_id = image_url.split('/')[-1].split('.')[0]  # Extract public_id
-        self.storage.delete_image(public_id)
-        if processed_url:
-            processed_id = processed_url.split('/')[-1].split('.')[0]
+    async def execute(self, id: int) -> bool:
+        entity = await self.repository.get_by_id(id)
+        if not entity:
+            return False
+        # Extract public_ids (giả sử URL format: https://res.cloudinary.com/.../barcodes/public_id.jpg)
+        if entity.image_url:
+            public_id = entity.image_url.split('/')[-1].split('.')[0]  # Hoặc tinh chỉnh nếu format khác
+            self.storage.delete_image(public_id)
+        if entity.processed_image_url:
+            processed_id = entity.processed_image_url.split('/')[-1].split('.')[0]
             self.storage.delete_image(processed_id)
         return await self.repository.delete(id)

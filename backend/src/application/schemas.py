@@ -116,3 +116,4 @@ class UserCreate(schemas.BaseUserCreate):
     """
     email: EmailStr
     password: str = Field(..., min_length=8, description="Mật khẩu ít nhất 8 ký tự")
+    full_name: Optional[str] = None

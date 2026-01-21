@@ -169,9 +169,7 @@ async def delete_barcode(
     _=Depends(current_superuser),  # Chỉ superuser
     delete_use_case: DeleteBarcodeUseCase = Depends(get_delete_use_case)
 ):
-    # Trước tiên get entity để lấy urls (hoặc thêm param)
-    # Giả sử bạn thêm get_by_id vào repo, rồi execute
-    success = await delete_use_case.execute(id, "image_url", "processed_url")  # Thay bằng real urls từ get
+    success = await delete_use_case.execute(id)
     if success:
         return {"message": "Deleted successfully"}
     raise HTTPException(404, "Not found")

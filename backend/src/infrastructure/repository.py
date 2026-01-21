@@ -4,7 +4,7 @@ Infrastructure layer: Database repository implementation.
 Provides methods to persist and retrieve barcode results into a PostgreSQL database 
 using SQLAlchemy AsyncSession.
 """
-from typing import List
+from typing import List, Optional
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from domain.entities import BarcodeResult
@@ -34,6 +34,16 @@ class PostgresBarcodeRepository(IBarcodeRepository):
         Returns:
             bool: True if the save was successful.
         """
+        # Check duplicate
+        stmt = select(BarcodeModel).where(
+            BarcodeModel.content == barcode.content,
+            BarcodeModel.barcode_type == barcode.barcode_type,
+            BarcodeModel.image_url == barcode.image_url
+        )
+        result = await self.session.execute(stmt)
+        if result.scalar_one_or_none():
+            return False  # Hoặc raise DuplicateError nếu muốn throw exception
+
         db_item = BarcodeModel(
             content=barcode.content,
             barcode_type=barcode.barcode_type,
@@ -74,3 +84,19 @@ class PostgresBarcodeRepository(IBarcodeRepository):
         result = await self.session.execute(stmt)
         await self.session.commit()
         return result.rowcount > 0
+    
+    async def get_by_id(self, id: int) -> Optional[BarcodeResult]:
+        stmt = select(BarcodeModel).where(BarcodeModel.id == id)
+        result = await self.session.execute(stmt)
+        item = result.scalar_one_or_none()
+        if not item:
+            return None
+        return BarcodeResult(
+            content=item.content,
+            barcode_type=item.barcode_type,
+            bounding_box=tuple(item.bounding_box),
+            image_url=item.image_url,
+            processed_image_url=item.processed_image_url,
+            id=item.id,
+            created_at=item.created_at
+        )
