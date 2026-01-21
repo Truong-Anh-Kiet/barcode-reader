@@ -1,0 +1,14 @@
+# Buộc tất cả file text dùng LF trong repo và working dir
+* text=auto eol=lf
+
+# Đặc biệt cho file lock (uv.lock, poetry.lock, package-lock.json, yarn.lock)
+*.lock text eol=lf
+
+# Binary files không cần xử lý line endings
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
