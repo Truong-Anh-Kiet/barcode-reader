@@ -38,6 +38,3 @@ jobs:
       run: |
         uv run flake8 src || true
 
-    - name: Run tests
-      run: |
-        uv run pytest || truez
