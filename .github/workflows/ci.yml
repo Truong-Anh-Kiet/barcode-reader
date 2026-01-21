@@ -11,23 +11,24 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4  # Nâng cấp lên v4 cho tốt hơn
+      - name: Checkout code
+        uses: actions/checkout@v4  # Must be FIRST – ensures repo files are present
 
-    - name: Install uv (official action)
-      uses: astral-sh/setup-uv@v3  # Hoặc v3/v2 nếu v3 chưa ổn định, nhưng v3 mới nhất
-      with:
-        enable-cache: true
-        cache-dependency-glob: "uv.lock"  # Cache dựa trên uv.lock để reuse
+      - name: Install uv (official action)
+        uses: astral-sh/setup-uv@v3  # Use v3 or latest stable; v4/v5 if you want newer
+        with:
+          enable-cache: true                  # Safe to keep
+          cache-dependency-glob: "**/uv.lock **/pyproject.toml"  # Explicit glob – adjust if uv.lock is not at root
 
-    - name: Set up Python (tự động dùng version từ pyproject.toml hoặc .python-version nếu có)
-      run: uv python install
+      - name: Set up Python (optional but recommended – auto picks from pyproject.toml or .python-version)
+        run: uv python install
 
-    - name: Install dependencies (sync với --frozen an toàn hơn)
-      run: uv sync --frozen --no-dev --no-install-project
+      - name: Install dependencies
+        run: uv sync --frozen --no-dev --no-install-project
 
-    - name: Run lint (ví dụ eslint hoặc ruff nếu có)
-      run: uv run ruff check .  # Thay bằng lệnh lint của bạn, hoặc bỏ nếu chưa có
+      # Add your lint/test steps here, e.g.:
+      - name: Lint with ruff (if you have it)
+        run: uv run ruff check .
 
-    - name: Run tests (ví dụ pytest)
-      run: uv run pytest  # Thay bằng lệnh test thực tế
+      - name: Run tests
+        run: uv run pytest  # Replace with your actual test command
