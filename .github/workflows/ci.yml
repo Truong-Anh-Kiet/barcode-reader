@@ -2,9 +2,9 @@ name: Basic Python CI
 
 on:
   push:
-    branches: [ main, dev ]
+    branches: [ dev, main ]
   pull_request:
-    branches: [ main ]
+    branches: [ dev, main ]
 
 jobs:
   lint-and-test:
@@ -12,26 +12,22 @@ jobs:
 
     steps:
     - name: Checkout code
-      uses: actions/checkout@v4
+      uses: actions/checkout@v4  # Nâng cấp lên v4 cho tốt hơn
 
-    - name: Setup Python
-      uses: actions/setup-python@v5
+    - name: Install uv (official action)
+      uses: astral-sh/setup-uv@v3  # Hoặc v3/v2 nếu v3 chưa ổn định, nhưng v3 mới nhất
       with:
-        python-version: "3.11"
+        enable-cache: true
+        cache-dependency-glob: "uv.lock"  # Cache dựa trên uv.lock để reuse
 
-    - name: Install uv
-      run: pipx install uv==0.4.13
+    - name: Set up Python (tự động dùng version từ pyproject.toml hoặc .python-version nếu có)
+      run: uv python install
 
-    - name: Create virtual environment
-      run: uv venv
-
-    - name: Install dependencies
+    - name: Install dependencies (sync với --frozen an toàn hơn)
       run: uv sync --frozen --no-dev --no-install-project
 
-    - name: Lint with flake8
-      run: |
-        uv run flake8 src || true
+    - name: Run lint (ví dụ eslint hoặc ruff nếu có)
+      run: uv run ruff check .  # Thay bằng lệnh lint của bạn, hoặc bỏ nếu chưa có
 
-    - name: Run tests
-      run: |
-        uv run pytest || true
+    - name: Run tests (ví dụ pytest)
+      run: uv run pytest  # Thay bằng lệnh test thực tế
