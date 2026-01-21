@@ -20,17 +20,13 @@ jobs:
         python-version: "3.11"
 
     - name: Install uv
-      run: |
-        curl -Ls https://astral.sh/uv/install.sh | sh
-        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+      run: pipx install uv==0.4.13
 
     - name: Create virtual environment
       run: uv venv
 
     - name: Install dependencies
-      run: |
-        uv pip install -e .
-        uv pip install flake8 pytest
+      run: uv sync --frozen --no-dev --no-install-project
 
     - name: Lint with flake8
       run: |
@@ -39,9 +35,3 @@ jobs:
     - name: Run tests
       run: |
         uv run pytest || true
-
-    - name: Update lock file
-      run: uv lock
-
-    - name: Install dependencies
-      run: uv sync --frozen --no-dev --no-install-project
