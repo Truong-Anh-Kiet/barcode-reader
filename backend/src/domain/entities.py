@@ -27,6 +27,9 @@ class BarcodeResult:
     bounding_box: Tuple[int, int, int, int]  # (x, y, w, h)
     image_url: Optional[str] = None  # URL to the image containing the barcode, if applicable
     processed_image_url: Optional[str] = None
+    id: Optional[int] = None
+    created_at: Optional[datetime] = None
+
     def __post_init__(self):
         if not self.content:
             raise ValueError("Barcode content cannot be empty.")
@@ -36,13 +39,3 @@ class BarcodeResult:
             raise ValueError("Bounding box must be a tuple of four integers (x, y, width, height).")
         if self.image_url is not None and not self.image_url.startswith(("http://", "https://")):
             raise ValueError("Image URL must be a valid URL starting with http:// or https://")
-
-@dataclass
-class User:
-    id: Optional[int] = None
-    email: str
-    hashed_password: str
-    is_active: bool = True
-    is_superuser: bool = False
-    is_verified: bool = False
-    created_at: Optional[datetime] = None

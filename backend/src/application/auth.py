@@ -10,7 +10,7 @@ from fastapi_users.authentication import (
 )
 from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
 
-from infrastructure.database import UserModel, get_db_session
+from infrastructure.database import UserModel
 from infrastructure.user_db import get_user_db  # Dependency get_user_db
 from passlib.context import CryptContext
 
@@ -25,7 +25,7 @@ pwd_context = CryptContext(schemes=["argon2"], deprecated="auto",
 
 class UserManager(IntegerIDMixin, BaseUserManager[UserModel, int]):
     """
-    Custom user manager để dùng Argon2id thay bcrypt.
+    Custom user manager to handle user operations.
     """
     user_db_model = UserModel
     reset_password_token_secret = SECRET

@@ -57,6 +57,12 @@ class IBarcodeRepository(ABC):
             List[BarcodeResult]: List of all barcode models in the database.
         """
 
+    @abstractmethod
+    async def delete(self, id: int) -> bool:
+        """
+        Deletes a barcode by its ID.
+        """
+        
 class IImageStorage(ABC):
     """
     Interface for image storage operations.

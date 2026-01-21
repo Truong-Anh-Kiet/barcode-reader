@@ -7,14 +7,21 @@ and starts the server using Uvicorn.
 
 import sys
 import os
+import logging
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from infrastructure.database import engine, Base
 from presentation.api import router as barcode_router
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
@@ -43,6 +50,14 @@ app = FastAPI(
 )
 
 app.include_router(barcode_router, prefix="/barcodes", tags=["barcodes"])
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:5173", "your-frontend-url.vercel.app"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/")
 async def root():

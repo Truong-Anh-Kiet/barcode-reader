@@ -5,7 +5,7 @@ Provides methods to persist and retrieve barcode results into a PostgreSQL datab
 using SQLAlchemy AsyncSession.
 """
 from typing import List
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from domain.entities import BarcodeResult
 from domain.interfaces import IBarcodeRepository
@@ -45,7 +45,7 @@ class PostgresBarcodeRepository(IBarcodeRepository):
         await self.session.commit()
         return True
 
-    async def get_all(self) -> List[BarcodeResult]:
+    async def get_all(self, limit: int = 10, offset: int = 0) -> List[BarcodeResult]:
         """
         Retrieves all barcode models from the database, ordered by creation time descending,
         and converts them to domain entities.
@@ -53,7 +53,7 @@ class PostgresBarcodeRepository(IBarcodeRepository):
         Returns:
             List[BarcodeResult]: List of domain barcode entities.
         """
-        stmt = select(BarcodeModel).order_by(BarcodeModel.created_at.desc())
+        stmt = select(BarcodeModel).order_by(BarcodeModel.created_at.desc()).limit(limit).offset(offset)
         result = await self.session.execute(stmt)
         db_items = result.scalars().all()
         return [
@@ -62,7 +62,15 @@ class PostgresBarcodeRepository(IBarcodeRepository):
                 barcode_type=item.barcode_type,
                 bounding_box=tuple(item.bounding_box),
                 image_url=item.image_url,
-                processed_image_url=item.processed_image_url
+                processed_image_url=item.processed_image_url,
+                id=item.id,
+                created_at=item.created_at
             )
             for item in db_items
         ]
+    
+    async def delete(self, id: int) -> bool:
+        stmt = delete(BarcodeModel).where(BarcodeModel.id == id)
+        result = await self.session.execute(stmt)
+        await self.session.commit()
+        return result.rowcount > 0

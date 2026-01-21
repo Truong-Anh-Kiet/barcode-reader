@@ -8,7 +8,8 @@ using Pydantic for validation and serialization.
 from typing import List, Optional
 from datetime import datetime
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
+from fastapi_users import schemas
 
 class BoundingBoxSchema(BaseModel):
     """
@@ -93,4 +94,25 @@ class GetBarcodesResponse(BaseModel):
     count: int
     data: List[BarcodeItem]
     message: str = "Success"
-    
+
+class UserRead(schemas.BaseUser[int]):
+    """
+    Schema trả về thông tin user sau khi đăng ký hoặc lấy thông tin (read-only).
+    Không chứa hashed_password.
+    """
+    id: int
+    email: EmailStr
+    is_active: bool = True
+    is_superuser: bool = False
+    is_verified: bool = False
+
+    class Config:
+        from_attributes = True  # Cho phép chuyển từ SQLAlchemy model
+
+
+class UserCreate(schemas.BaseUserCreate):
+    """
+    Schema nhận dữ liệu từ body khi đăng ký (register).
+    """
+    email: EmailStr
+    password: str = Field(..., min_length=8, description="Mật khẩu ít nhất 8 ký tự")

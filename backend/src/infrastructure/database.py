@@ -31,35 +31,28 @@ Base: DeclarativeMeta = declarative_base()
 class BarcodeModel(Base):
     """
     SQLAlchemy model representing the 'barcodes' table in the database.
-
-    This model stores the results of barcode scans, including content, type,
-    bounding box coordinates, optional image URL from Cloudinary, and creation timestamp.
-
-    Attributes:
-        id (int): Primary key, auto-incremented.
-        content (str): The decoded content of the barcode.
-        barcode_type (str): The type/format of the barcode (e.g., EAN13, QRCode).
-        bounding_box (list[int]): List of 4 integers [x, y, width, height].
-        image_url (str | None): Secure URL of the uploaded image from Cloudinary (optional).
-        created_at (datetime): Timestamp when the record was created.
     """
 
     __tablename__ = "barcodes"
 
-    id = Column(Integer, primary_key=True, index=True)
-    content = Column(String, nullable=False, index=True)
-    barcode_type = Column(String, nullable=False)
-    bounding_box = Column(ARRAY(Integer), nullable=False)
-    image_url = Column(String, nullable=True)
-    processed_image_url = Column(String, nullable=True)
-    created_at = Column(DateTime(timezone=True),  # ← Thêm timezone=True
-                        default=datetime.now(timezone.utc),  # Giữ default Python nếu cần
-                        nullable=False)
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
+    content: Mapped[str] = mapped_column(nullable=False, index=True)
+    barcode_type: Mapped[str] = mapped_column(nullable=False)
+    bounding_box: Mapped[list[int]] = mapped_column(ARRAY(Integer), nullable=False)
+    image_url: Mapped[str | None] = mapped_column(nullable=True)
+    processed_image_url: Mapped[str | None] = mapped_column(nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), 
+                                                 default=lambda: datetime.now(timezone.utc), 
+                                                 nullable=False)
     
 class UserModel(SQLAlchemyBaseUserTable[int], Base):
+    """
+    SQLAlchemy model representing the 'users' table in the database.
+    """
     __tablename__ = "users"
 
     # Field custom thêm vào
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
     full_name: Mapped[str] = mapped_column(String(100), nullable=True)          # Họ tên đầy đủ, có thể NULL
     phone_number: Mapped[str] = mapped_column(String(15), unique=True, nullable=True)  # Số điện thoại, unique
     avatar_url: Mapped[str] = mapped_column(String(255), nullable=True)         # Link ảnh đại diện
