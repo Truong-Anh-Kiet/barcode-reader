@@ -39,3 +39,9 @@ jobs:
     - name: Run tests
       run: |
         uv run pytest || true
+
+    - name: Update lock file
+      run: uv lock
+
+    - name: Install dependencies
+      run: uv sync --frozen --no-dev --no-install-project
