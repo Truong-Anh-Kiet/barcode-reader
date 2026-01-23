@@ -16,6 +16,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from infrastructure.database import engine, Base
+from infrastructure.cloudinary_storage import configure_cloudinary
 from presentation.api import router as barcode_router
 
 logging.basicConfig(
@@ -37,6 +38,7 @@ async def lifespan(_app: FastAPI):
         None
     """
     # Startup:
+    configure_cloudinary()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield

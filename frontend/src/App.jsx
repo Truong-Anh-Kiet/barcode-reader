@@ -1,6 +1,7 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import HomePage from './pages/Home';
 import AuthPage from './pages/Auth';
+import ForgotPassword from './pages/ForgotPassword';
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem('token');
@@ -16,6 +17,7 @@ function App() {
       <div className="container">
         <Routes>
           <Route path="/login" element={<AuthPage />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route
             path="/"
             element={

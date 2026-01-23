@@ -6,10 +6,10 @@ Also defines the BarcodeModel representing the database table structure.
 """
 import os
 from datetime import datetime, timezone
-from typing import AsyncGenerator
+from typing import AsyncGenerator, Optional
 from dotenv import load_dotenv
 from fastapi_users.db import SQLAlchemyBaseUserTable
-from sqlalchemy import ARRAY, Column, DateTime, Integer, String
+from sqlalchemy import ARRAY, DateTime, Integer, String
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import DeclarativeMeta, Mapped, mapped_column
@@ -41,6 +41,8 @@ class BarcodeModel(Base):
     bounding_box: Mapped[list[int]] = mapped_column(ARRAY(Integer), nullable=False)
     image_url: Mapped[str | None] = mapped_column(nullable=True)
     processed_image_url: Mapped[str | None] = mapped_column(nullable=True)
+    original_public_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    processed_public_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), 
                                                  default=lambda: datetime.now(timezone.utc), 
                                                  nullable=False)

@@ -42,29 +42,20 @@ class ScanBarcodeUseCase:
             List[BarcodeResult]: Collection of all detected barcodes.
         """
         logging.info(f"Starting scan for file: {filename}")
-        try:
-            # Upload original image
-            image_url = self.storage.upload_image(image_data, filename)
-        except Exception as e:
-            raise ValueError(f"Failed to upload original image: {str(e)}")
-
         # Full preprocessing pipeline
         processed_data = self.processor.process_image(image_data)
-
-        # Upload processed ONCE
         processed_filename = f"processed_{filename}"
-        try:
-            processed_image_url = self.storage.upload_image(processed_data, processed_filename)
-        except Exception as e:
-            raise ValueError(f"Failed to upload processed image: {str(e)}")
 
         # Detect
+        original_url, original_public_id = self.storage.upload_image(image_data, filename)
+        processed_url, processed_public_id = self.storage.upload_image(processed_data, processed_filename)
         results = self.processor.multi_scale_detect(processed_data, self.detector)
-
         # Assign URLs cho tất cả và save
         for item in results:
-            item.image_url = image_url
-            item.processed_image_url = processed_image_url
+            item.image_url = original_url
+            item.processed_image_url = processed_url
+            item.original_public_id = original_public_id
+            item.processed_public_id = processed_public_id
             await self.repository.save(item)
         logging.info(f"Detected {len(results)} barcodes")
         return results
@@ -110,10 +101,8 @@ class DeleteBarcodeUseCase:
         if not entity:
             return False
         # Extract public_ids (giả sử URL format: https://res.cloudinary.com/.../barcodes/public_id.jpg)
-        if entity.image_url:
-            public_id = entity.image_url.split('/')[-1].split('.')[0]  # Hoặc tinh chỉnh nếu format khác
-            self.storage.delete_image(public_id)
-        if entity.processed_image_url:
-            processed_id = entity.processed_image_url.split('/')[-1].split('.')[0]
-            self.storage.delete_image(processed_id)
+        if entity.original_public_id:
+            self.storage.delete_image(entity.original_public_id)
+        if entity.processed_public_id:
+            self.storage.delete_image(entity.processed_public_id)
         return await self.repository.delete(id)

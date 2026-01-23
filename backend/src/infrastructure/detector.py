@@ -9,33 +9,33 @@ from typing import List
 
 import cv2
 import numpy as np
-from pyzbar.pyzbar import decode
+import zxingcpp
+from ultralytics import YOLO
 
 from domain.entities import BarcodeResult
 from domain.interfaces import IBarcodeDetector
 
 
-class PyzbarDetector(IBarcodeDetector):
+class YOLOV8BarcodeDetector(IBarcodeDetector):
     """
-    A barcode detector implementation using the pyzbar library (based on ZBar).
-
-    This is a reliable, fast alternative to zxingcpp, especially good for:
-    - 1D barcodes: EAN13, UPC, Code128, Code39, etc.
-    - QR codes and some other 2D formats
-
-    Works well on Windows, Linux, and most environments after installing libzbar0.
+    A barcode detector implementation using YOLOv8 (detection bounding box) + ZXing-cpp (decode content & type).
+    Model: Piero2411/YOLOV8s-Barcode-Detection from Hugging Face
     """
+
+    def __init__(self, conf_threshold: float = 0.25):
+        self.model = YOLO("Piero2411/YOLOV8s-Barcode-Detection")
+        self.conf_threshold = conf_threshold
+        print("YOLOv8 Barcode model loaded successfully.")
 
     def detect(self, image_bytes: bytes) -> List[BarcodeResult]:
         """
-        Detects barcodes in the given image bytes using pyzbar.
+        Detects barcodes in the given image bytes using YOLOv8 + ZXing-cpp.
 
         Args:
             image_bytes (bytes): Raw binary data of the image.
 
         Returns:
             List[BarcodeResult]: List of detected barcode results.
-            Empty if no barcodes or invalid image.
         """
         # Decode bytes to OpenCV image (BGR format)
         nparr = np.frombuffer(image_bytes, np.uint8)
@@ -46,32 +46,41 @@ class PyzbarDetector(IBarcodeDetector):
             return []
 
         # pyzbar works directly with the BGR image
-        barcodes = decode(img)
+        results = self.model(img, conf=self.conf_threshold, iou=0.45, verbose=False)[0]
 
-        if not barcodes:
-            print("pyzbar: No barcodes detected in the image.")
+        if len(results.boxes) == 0:
+            print("YOLOv8: No barcode detected.")
             return []
+        
+        barcode_results: List[BarcodeResult] = []
 
-        barcode_results = []
-
-        for barcode in barcodes:
-            # Extract content and type
-            content = barcode.data.decode('utf-8')
-            barcode_type = barcode.type  # e.g. 'EAN13', 'QRCODE', 'CODE128'...
-
-            # Get bounding box (left, top, width, height) - exactly what we need
-            rect = barcode.rect
-            x, y, w, h = rect.left, rect.top, rect.width, rect.height
-
-            # Skip invalid bounding boxes
+        for box in results.boxes:
+            x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
+            w = x2 - x1
+            h = y2 - y1
+            
             if w <= 0 or h <= 0:
                 continue
+            
+            # Crop region
+            cropped_img = img[y1:y2, x1:x2]
 
-            barcode_results.append(BarcodeResult(
-                content=content,
-                barcode_type=barcode_type,
-                bounding_box=(int(x), int(y), int(w), int(h))
-            ))
-
-        print(f"pyzbar found {len(barcode_results)} barcode(s)")
-        return barcode_results
+            zx_result = zxingcpp.read_barcode(cropped_img)
+            
+            if zx_result.valid:
+                content = zx_result.text
+                barcode_type = zx_result.format.name  # e.g., 'QR_CODE', 'EAN_13', 'CODE_128'
+                
+                barcode_results.append(BarcodeResult(
+                    content=content,
+                    barcode_type=barcode_type,
+                    bounding_box=(x1, y1, w, h)
+                ))
+            else:
+                continue
+        
+        # Remove duplicates dựa trên content
+        unique_results = {res.content: res for res in barcode_results}.values()
+        
+        print(f"YOLOv8 + ZXing-cpp detected {len(unique_results)} unique barcode(s)")
+        return list(unique_results)

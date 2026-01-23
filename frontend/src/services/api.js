@@ -43,9 +43,9 @@ export const scanBarcode = async (file) => {
   return response.data;
 };
 
-export const getBarcodes = async () => {
-  const response = await api.get('/barcodes/list');
-  return response.data.data;
+export const getBarcodes = async (limit = 10, offset = 0) => {
+  const response = await api.get(`/barcodes/list?limit=${limit}&offset=${offset}`);
+  return { data: response.data.data, total: response.data.count };
 };
 
 export const deleteBarcode = async (id) => {
@@ -53,3 +53,17 @@ export const deleteBarcode = async (id) => {
 };
 
 export default api;
+
+export const register = async (email, password, fullName = '') => {
+  const response = await api.post('/auth/register', {
+    email,
+    password,
+    full_name: fullName,
+  });
+  return response.data;
+};
+
+export const getUserInfo = async () => {
+  const response = await api.get('/users/me');
+  return response.data;
+};

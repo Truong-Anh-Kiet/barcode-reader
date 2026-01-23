@@ -27,6 +27,8 @@ class BarcodeResult:
     bounding_box: Tuple[int, int, int, int]  # (x, y, w, h)
     image_url: Optional[str] = None  # URL to the image containing the barcode, if applicable
     processed_image_url: Optional[str] = None
+    original_public_id: Optional[str] = None
+    processed_public_id: Optional[str] = None
     id: Optional[int] = None
     created_at: Optional[datetime] = None
 

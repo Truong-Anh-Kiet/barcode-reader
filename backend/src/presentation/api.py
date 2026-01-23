@@ -17,7 +17,7 @@ from application.auth import current_superuser
 from domain.interfaces import IImageProcessor, IImageStorage
 from infrastructure.cloudinary_storage import CloudinaryStorage
 from infrastructure.database import get_db_session
-from infrastructure.detector import PyzbarDetector
+from infrastructure.detector import YOLOV8BarcodeDetector
 from infrastructure.image_processor import OpenCVImageProcessor
 from infrastructure.repository import PostgresBarcodeRepository
 
@@ -64,7 +64,7 @@ async def get_scan_use_case(
     """
     Dependency provider for ScanBarcodeUseCase.
     """
-    detector = PyzbarDetector()
+    detector = YOLOV8BarcodeDetector(conf_threshold=0.3)
     repository = PostgresBarcodeRepository(session)
     storage: IImageStorage = CloudinaryStorage()
     processor: IImageProcessor = OpenCVImageProcessor()
