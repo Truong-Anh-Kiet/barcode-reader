@@ -14,7 +14,6 @@ const UserProfile = () => {
         setUser(data);
       } catch (err) {
         toast.error('Unable to load user information.');
-        // Nếu lỗi 401, tự động logout (interceptor đã xử lý phần nào)
       } finally {
         setLoading(false);
       }

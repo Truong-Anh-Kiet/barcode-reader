@@ -42,20 +42,23 @@ class PostgresBarcodeRepository(IBarcodeRepository):
         )
         result = await self.session.execute(stmt)
         if result.scalar_one_or_none():
-            return False  # Hoặc raise DuplicateError nếu muốn throw exception
-
+            return False
+            
         db_item = BarcodeModel(
             content=barcode.content,
             barcode_type=barcode.barcode_type,
             bounding_box=list(barcode.bounding_box),
+            user_id=barcode.user_id,
             image_url=barcode.image_url,
-            processed_image_url=barcode.processed_image_url
+            processed_image_url=barcode.processed_image_url,
+            original_public_id=barcode.original_public_id,
+            processed_public_id=barcode.processed_public_id
         )
         self.session.add(db_item)
         await self.session.commit()
         return True
 
-    async def get_all(self, limit: int = 10, offset: int = 0) -> List[BarcodeResult]:
+    async def get_all(self, limit: int = 10, offset: int = 0, user_id: Optional[int] = None) -> List[BarcodeResult]:
         """
         Retrieves all barcode models from the database, ordered by creation time descending,
         and converts them to domain entities.
@@ -63,7 +66,10 @@ class PostgresBarcodeRepository(IBarcodeRepository):
         Returns:
             List[BarcodeResult]: List of domain barcode entities.
         """
-        stmt = select(BarcodeModel).order_by(BarcodeModel.created_at.desc()).limit(limit).offset(offset)
+        stmt = select(BarcodeModel).order_by(BarcodeModel.created_at.desc())
+        if user_id is not None:
+            stmt = stmt.where(BarcodeModel.user_id == user_id)
+        stmt = stmt.limit(limit).offset(offset)
         result = await self.session.execute(stmt)
         db_items = result.scalars().all()
         return [
@@ -73,20 +79,26 @@ class PostgresBarcodeRepository(IBarcodeRepository):
                 bounding_box=tuple(item.bounding_box),
                 image_url=item.image_url,
                 processed_image_url=item.processed_image_url,
+                original_public_id=item.original_public_id,
+                processed_public_id=item.processed_public_id,
                 id=item.id,
                 created_at=item.created_at
             )
             for item in db_items
         ]
     
-    async def delete(self, id: int) -> bool:
+    async def delete(self, id: int, user_id: Optional[int] = None) -> bool:
         stmt = delete(BarcodeModel).where(BarcodeModel.id == id)
+        if user_id is not None:
+            stmt = stmt.where(BarcodeModel.user_id == user_id)
         result = await self.session.execute(stmt)
         await self.session.commit()
         return result.rowcount > 0
     
-    async def get_by_id(self, id: int) -> Optional[BarcodeResult]:
+    async def get_by_id(self, id: int, user_id: Optional[int] = None) -> Optional[BarcodeResult]:
         stmt = select(BarcodeModel).where(BarcodeModel.id == id)
+        if user_id is not None:
+            stmt = stmt.where(BarcodeModel.user_id == user_id)
         result = await self.session.execute(stmt)
         item = result.scalar_one_or_none()
         if not item:
@@ -97,6 +109,8 @@ class PostgresBarcodeRepository(IBarcodeRepository):
             bounding_box=tuple(item.bounding_box),
             image_url=item.image_url,
             processed_image_url=item.processed_image_url,
+            original_public_id=item.original_public_id,
+            processed_public_id=item.processed_public_id,
             id=item.id,
             created_at=item.created_at
         )

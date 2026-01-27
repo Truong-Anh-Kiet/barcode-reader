@@ -14,15 +14,6 @@ from fastapi_users import schemas
 class BoundingBoxSchema(BaseModel):
     """
     Schema representing an axis-aligned bounding box.
-
-    Attributes:
-        x (int): X-coordinate of the top-left corner (pixels).
-        y (int): Y-coordinate of the top-left corner (pixels).
-        width (int): Width of the bounding box (pixels).
-        height (int): Height of the bounding box (pixels).
-
-    Notes:
-        Coordinates are relative to the image origin (top-left). All values are integers.
     """
     x: int
     y: int
@@ -32,12 +23,6 @@ class BoundingBoxSchema(BaseModel):
 class BarcodeResponse(BaseModel):
     """
     Response model for a detected barcode.
-
-    Attributes:
-        content (str): The decoded barcode string (e.g. "8934565010015").
-        type (str): Barcode symbology/type (e.g. "EAN13").
-        confidence (float): Confidence score between 0.0 and 1.0 (default 1.0).
-        box (BoundingBoxSchema): Bounding box describing the barcode location.
     """
     content: str = Field(..., example="8934565010015")
     type: str = Field(..., example="EAN13")
@@ -49,12 +34,6 @@ class BarcodeResponse(BaseModel):
 class ScanResultResponse(BaseModel):
     """
     Response model for barcode scan results.
-
-    Attributes:
-        success (bool): True if the scan operation completed successfully.
-        count (int): Number of barcode items returned in the response.
-        data (List[BarcodeResponse]): List of barcode result objects.
-        message (str): Informational message about the scan result (defaults to "Success").
     """
     success: bool
     count: int
@@ -64,13 +43,6 @@ class ScanResultResponse(BaseModel):
 class BarcodeItem(BaseModel):
     """
     Schema for a single barcode item retrieved from the database.
-
-    Attributes:
-        id (int): Unique identifier of the barcode.
-        content (str): The decoded barcode string.
-        barcode_type (str): Type of the barcode.
-        bounding_box (List[int]): Bounding box as [x, y, w, h].
-        created_at (datetime): Timestamp when the barcode was created.
     """
     id: int
     content: str
@@ -97,8 +69,7 @@ class GetBarcodesResponse(BaseModel):
 
 class UserRead(schemas.BaseUser[int]):
     """
-    Schema trả về thông tin user sau khi đăng ký hoặc lấy thông tin (read-only).
-    Không chứa hashed_password.
+    Schema for reading user information.
     """
     id: int
     email: EmailStr
@@ -107,13 +78,20 @@ class UserRead(schemas.BaseUser[int]):
     is_verified: bool = False
 
     class Config:
-        from_attributes = True  # Cho phép chuyển từ SQLAlchemy model
+        from_attributes = True
 
 
 class UserCreate(schemas.BaseUserCreate):
     """
-    Schema nhận dữ liệu từ body khi đăng ký (register).
+    Schema for creating a new user.
     """
     email: EmailStr
-    password: str = Field(..., min_length=8, description="Mật khẩu ít nhất 8 ký tự")
+    password: str = Field(..., min_length=8, description="Password must be at least 8 characters long.")
     full_name: Optional[str] = None
+
+class UserUpdate(schemas.BaseUserUpdate):
+    """
+    Schema for updating user information.
+    """
+    full_name: Optional[str] = None
+    phone_number: Optional[str] = None

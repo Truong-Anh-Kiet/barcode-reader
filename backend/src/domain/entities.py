@@ -7,7 +7,6 @@ Entities are domain objects that hold business data without behavior.
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Tuple, Optional
-from fastapi_users import schemas
 
 @dataclass
 class BarcodeResult:
@@ -24,8 +23,9 @@ class BarcodeResult:
     """
     content: str
     barcode_type: str
-    bounding_box: Tuple[int, int, int, int]  # (x, y, w, h)
-    image_url: Optional[str] = None  # URL to the image containing the barcode, if applicable
+    bounding_box: Tuple[int, int, int, int]
+    user_id: Optional[int] = None
+    image_url: Optional[str] = None
     processed_image_url: Optional[str] = None
     original_public_id: Optional[str] = None
     processed_public_id: Optional[str] = None

@@ -11,98 +11,37 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from application.schemas import (
     BarcodeItem, BarcodeResponse,
     BoundingBoxSchema, GetBarcodesResponse,
-    ScanResultResponse, UserRead, UserCreate)
+    ScanResultResponse)
 from application.use_cases import GetBarcodesUseCase, ScanBarcodeUseCase, DeleteBarcodeUseCase
-from application.auth import current_superuser
-from domain.interfaces import IImageProcessor, IImageStorage
+from application.auth import current_active_user
 from infrastructure.cloudinary_storage import CloudinaryStorage
 from infrastructure.database import get_db_session
-from infrastructure.detector import YOLOV8BarcodeDetector
+from infrastructure.detector_singleton import get_detector
 from infrastructure.image_processor import OpenCVImageProcessor
 from infrastructure.repository import PostgresBarcodeRepository
-
-# Import từ auth
-from application.auth import (
-    fastapi_users,
-    auth_backend,
-    current_active_user
-)
-
 router = APIRouter()
 
-# Include auth routers từ fastapi-users
-router.include_router(
-    fastapi_users.get_auth_router(auth_backend),
-    prefix="/auth/jwt",
-    tags=["auth"],
-)
-
-router.include_router(
-    fastapi_users.get_register_router(UserRead, UserCreate),
-    prefix="/auth",
-    tags=["auth"],
-)
-
-# Protected endpoint example: Get info of current logged-in user
-@router.get("/users/me", tags=["auth"])
-async def read_users_me(user=Depends(current_active_user)):
-    """
-    Returns information about the currently authenticated user.
-    """
-    return {
-        "id": user.id,
-        "email": user.email,
-        "is_active": user.is_active,
-        "is_superuser": user.is_superuser,
-        "is_verified": user.is_verified
-    }
-
-# Dependency cho ScanBarcodeUseCase
-async def get_scan_use_case(
-    session: AsyncSession = Depends(get_db_session)
-) -> ScanBarcodeUseCase:
-    """
-    Dependency provider for ScanBarcodeUseCase.
-    """
-    detector = YOLOV8BarcodeDetector(conf_threshold=0.3)
+async def get_scan_use_case(session: AsyncSession = Depends(get_db_session)) -> ScanBarcodeUseCase:
+    detector = get_detector()
     repository = PostgresBarcodeRepository(session)
-    storage: IImageStorage = CloudinaryStorage()
-    processor: IImageProcessor = OpenCVImageProcessor()
+    storage = CloudinaryStorage()
+    processor = OpenCVImageProcessor()
     return ScanBarcodeUseCase(detector, repository, storage, processor)
-
-# Dependency cho GetBarcodesUseCase
-async def get_get_use_case(
-    session: AsyncSession = Depends(get_db_session)
-) -> GetBarcodesUseCase:
-    """
-    Dependency provider for GetBarcodesUseCase.
-    """
-    repository = PostgresBarcodeRepository(session)
-    return GetBarcodesUseCase(repository)
 
 @router.post("/scan", response_model=ScanResultResponse, response_model_exclude_none=True, tags=["barcodes"])
 async def scan_endpoint(
     file: UploadFile = File(...),
-    user=Depends(current_active_user),  # Yêu cầu phải login (JWT Bearer)
+    user=Depends(current_active_user),
     scan_use_case: ScanBarcodeUseCase = Depends(get_scan_use_case)
 ):
-    """
-    Endpoint to scan an uploaded image for barcodes (protected: requires authentication).
-
-    Validates the file type, reads the image, executes the use case, and returns results.
-    """
-    #if not user.is_superuser:
-    #    raise HTTPException(status_code=403, detail="Permission denied")
-
     if not file.content_type.startswith('image/'):
-        raise HTTPException(status_code=400, detail="File must be an image")
-    
-    if file.size > 5 * 1024 * 1024:  # 5MB max
-        raise HTTPException(status_code=413, detail="File too large")
+        raise HTTPException(400, "File must be an image")
+    if file.size > 5 * 1024 * 1024:
+        raise HTTPException(413, "File too large")
 
     try:
         image_data = await file.read()
-        entities = await scan_use_case.execute(image_data, file.filename)
+        entities = await scan_use_case.execute(image_data, file.filename, user)
         results = [
             BarcodeResponse(
                 content=e.content,
@@ -124,26 +63,22 @@ async def scan_endpoint(
             count=len(results),
             data=results
         )
-
-    except ValueError as e:
-        logging.error("Error: %s", str(e))
-        raise HTTPException(status_code=400, detail=f"Value error: {str(e)}") from e
-
     except Exception as e:
-        logging.exception("Unexpected error in scan endpoint")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logging.exception("Error in scan")
+        raise HTTPException(500, "Internal server error")
+
+async def get_get_use_case(session: AsyncSession = Depends(get_db_session)) -> GetBarcodesUseCase:
+    repository = PostgresBarcodeRepository(session)
+    return GetBarcodesUseCase(repository)
 
 @router.get("/list", response_model=GetBarcodesResponse, tags=["barcodes"])
 async def list_barcodes(
-    limit: int = Query(10, ge=1, le=100),  # Default 10, max 100
+    user = Depends(current_active_user),
+    limit: int = Query(10, ge=1, le=100),
     offset: int = Query(0, ge=0),
     get_use_case: GetBarcodesUseCase = Depends(get_get_use_case)
 ):
-    """
-    Endpoint to retrieve all saved barcodes (public - no login required).
-    If you want to protect it, add: user=Depends(current_active_user)
-    """
-    entities = await get_use_case.execute(limit=limit, offset=offset)
+    entities = await get_use_case.execute(user_id=user.id, limit=limit, offset=offset)
     results = [
         BarcodeItem(
             id=item.id,
@@ -158,6 +93,7 @@ async def list_barcodes(
     ]
     return GetBarcodesResponse(success=True, count=len(results), data=results)
 
+
 async def get_delete_use_case(session: AsyncSession = Depends(get_db_session)) -> DeleteBarcodeUseCase:
     repository = PostgresBarcodeRepository(session)
     storage = CloudinaryStorage()
@@ -166,10 +102,10 @@ async def get_delete_use_case(session: AsyncSession = Depends(get_db_session)) -
 @router.delete("/{id}", tags=["barcodes"])
 async def delete_barcode(
     id: int,
-    _=Depends(current_superuser),  # Chỉ superuser
+    user = Depends(current_active_user),
     delete_use_case: DeleteBarcodeUseCase = Depends(get_delete_use_case)
 ):
-    success = await delete_use_case.execute(id)
+    success = await delete_use_case.execute(id, user)
     if success:
         return {"message": "Deleted successfully"}
     raise HTTPException(404, "Not found")

@@ -76,7 +76,7 @@ class IImageStorage(ABC):
     """
 
     @abstractmethod
-    def upload_image(self, image_data: bytes, filename: str) -> str:
+    def upload_image(self, image_data: bytes, filename: str) -> Tuple[str, str]:
         """
         Uploads image data and returns the secure URL.
 

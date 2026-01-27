@@ -4,8 +4,10 @@ This module contains the implementation of a barcode detector using pyzbar libra
 The PyzbarDetector class provides functionality to detect and decode barcodes from
 images represented as byte arrays. It returns the results as a list of BarcodeResult objects.
 """
-
+import os
+import logging
 from typing import List
+from venv import logger
 
 import cv2
 import numpy as np
@@ -15,6 +17,7 @@ from ultralytics import YOLO
 from domain.entities import BarcodeResult
 from domain.interfaces import IBarcodeDetector
 
+logger = logging.getLogger(__name__)
 
 class YOLOV8BarcodeDetector(IBarcodeDetector):
     """
@@ -23,9 +26,12 @@ class YOLOV8BarcodeDetector(IBarcodeDetector):
     """
 
     def __init__(self, conf_threshold: float = 0.25):
-        self.model = YOLO("Piero2411/YOLOV8s-Barcode-Detection")
+        model_path = os.path.join("models", "YOLOV8s_Barcode_Detection.pt")
+        if not os.path.exists(model_path):
+            raise FileNotFoundError(f"YOLO model not found at {model_path}. Please download from Hugging Face (Piero2411/YOLOV8s-Barcode-Detection)")
+        self.model = YOLO(model_path)
         self.conf_threshold = conf_threshold
-        print("YOLOv8 Barcode model loaded successfully.")
+        logger.info("YOLOv8 Barcode model loaded successfully.")
 
     def detect(self, image_bytes: bytes) -> List[BarcodeResult]:
         """
@@ -37,19 +43,18 @@ class YOLOV8BarcodeDetector(IBarcodeDetector):
         Returns:
             List[BarcodeResult]: List of detected barcode results.
         """
-        # Decode bytes to OpenCV image (BGR format)
         nparr = np.frombuffer(image_bytes, np.uint8)
         img = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
 
         if img is None:
-            print("OpenCV could not decode the image!")
+            logger.error("OpenCV could not decode the image!")
             return []
 
         # pyzbar works directly with the BGR image
         results = self.model(img, conf=self.conf_threshold, iou=0.45, verbose=False)[0]
 
         if len(results.boxes) == 0:
-            print("YOLOv8: No barcode detected.")
+            logger.info("YOLOv8: No barcode detected.")
             return []
         
         barcode_results: List[BarcodeResult] = []
@@ -69,18 +74,15 @@ class YOLOV8BarcodeDetector(IBarcodeDetector):
             
             if zx_result.valid:
                 content = zx_result.text
-                barcode_type = zx_result.format.name  # e.g., 'QR_CODE', 'EAN_13', 'CODE_128'
+                barcode_type = zx_result.format.name
                 
                 barcode_results.append(BarcodeResult(
                     content=content,
                     barcode_type=barcode_type,
                     bounding_box=(x1, y1, w, h)
                 ))
-            else:
-                continue
         
-        # Remove duplicates dựa trên content
         unique_results = {res.content: res for res in barcode_results}.values()
         
-        print(f"YOLOv8 + ZXing-cpp detected {len(unique_results)} unique barcode(s)")
+        logger.info(f"YOLOv8 + ZXing-cpp detected {len(unique_results)} unique barcode(s)")
         return list(unique_results)

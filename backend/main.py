@@ -9,40 +9,53 @@ import sys
 import os
 import logging
 
+from dotenv import load_dotenv
+
+load_dotenv()
+logging.info(".env file loaded successfully")
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
 
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 from infrastructure.database import engine, Base
 from infrastructure.cloudinary_storage import configure_cloudinary
 from presentation.api import router as barcode_router
+from fastapi.staticfiles import StaticFiles
+
+from application.auth import fastapi_users,auth_backend, current_superuser
+
+from application.schemas import UserRead, UserCreate, UserUpdate
+
+from fastapi_users.router import get_reset_password_router
+from fastapi_mail import FastMail, ConnectionConfig
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.WARNING,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 
+conf = ConnectionConfig(
+    MAIL_USERNAME=os.getenv("SMTP_USER"),
+    MAIL_PASSWORD=os.getenv("SMTP_PASSWORD"),
+    MAIL_FROM=os.getenv("FROM_EMAIL"),
+    MAIL_PORT=int(os.getenv("SMTP_PORT", 587)),
+    MAIL_SERVER=os.getenv("SMTP_HOST"),
+    MAIL_TLS=True,
+    MAIL_SSL=False,
+    USE_CREDENTIALS=True,
+)
+
+mail = FastMail(conf)
+
 @asynccontextmanager
-async def lifespan(_app: FastAPI):
-    """
-    Manages the lifespan of the FastAPI application.
-
-    Handles startup (create database tables) and shutdown events.
-
-    Args:
-        _app (FastAPI): The FastAPI app instance.
-
-    Yields:
-        None
-    """
-    # Startup:
+async def lifespan(_: FastAPI):
     configure_cloudinary()
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
     yield
-    # Shutdown: (add cleanup if needed, e.g., close connections)
 
 app = FastAPI(
     title="Clean Barcode API",
@@ -51,11 +64,43 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-app.include_router(barcode_router, prefix="/barcodes", tags=["barcodes"])
+app.mount("/static",
+          StaticFiles(directory="src/static"),
+          name="static")
+
+app.include_router(
+    fastapi_users.get_auth_router(auth_backend),
+    prefix="/auth",
+    tags=["auth"],
+)
+
+app.include_router(
+    fastapi_users.get_register_router(UserRead, UserCreate),
+    prefix="/auth",
+    tags=["auth"]
+)
+
+app.include_router(
+    get_reset_password_router(mail),
+    prefix="/auth",
+    tags=["auth"]
+)
+
+app.include_router(
+    fastapi_users.get_users_router(UserRead, UserUpdate),
+    prefix="/users",
+    tags=["users"],
+    dependencies=[Depends(current_superuser)]
+)
+
+app.include_router(
+    barcode_router,
+    prefix="/barcodes",
+    tags=["barcodes"])
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "your-frontend-url.vercel.app"],
+    allow_origins=["http://localhost:3000", "http://localhost:5173", "your-frontend-url.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -63,16 +108,7 @@ app.add_middleware(
 
 @app.get("/")
 async def root():
-    """
-    Handles the root endpoint of the API.
-
-    Provides a simple message to confirm the API is running.
-
-    Returns:
-        dict: A dictionary containing a status message.
-    """
     return {"message": "Barcode Scanner API is running. Go to /docs for API documentation."}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
-    

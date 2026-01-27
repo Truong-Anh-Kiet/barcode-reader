@@ -8,12 +8,11 @@ following the dependency inversion principle by implementing IImageStorage inter
 import os
 import uuid
 import logging
-from typing import Optional
 
 import cloudinary
 import cloudinary.uploader
 from cloudinary.exceptions import Error as CloudinaryError
-from dotenv import load_dotenv
+from typing import Tuple
 
 from domain.interfaces import IImageStorage
 
@@ -26,7 +25,6 @@ def configure_cloudinary():
     Configure Cloudinary SDK once at application startup.
     Call this function in main.py (lifespan startup) or at module level if needed.
     """
-    load_dotenv()  # Load .env nếu chưa load
 
     cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME")
     api_key = os.getenv("CLOUDINARY_API_KEY")
@@ -69,7 +67,7 @@ class CloudinaryStorage(IImageStorage):
             logger.warning("Cloudinary not configured yet. Attempting fallback config.")
             configure_cloudinary()
 
-    def upload_image(self, image_data: bytes, filename: str) -> str:
+    def upload_image(self, image_data: bytes, filename: str) -> Tuple[str, str]:
         """
         Uploads image data to Cloudinary and returns the secure public URL.
 
@@ -90,24 +88,20 @@ class CloudinaryStorage(IImageStorage):
         if not image_data or len(image_data) == 0:
             raise ValueError("Image data cannot be empty")
 
-        # Sanitize base name: only alphanumeric, -, _
         base_name = filename.rsplit('.', 1)[0] if '.' in filename else filename
         safe_name = "".join(c for c in base_name if c.isalnum() or c in ['-', '_']).strip('_-')
 
-        # Unique public_id: barcodes/short-uuid_safe-name
-        unique_part = uuid.uuid4().hex[:10]  # 10 chars đủ unique
-        public_id = f"barcodes/{unique_part}_{safe_name[:40]}"  # Giới hạn độ dài tránh quá dài
-
+        unique_part = uuid.uuid4().hex[:10]
+        public_id = f"barcodes/{unique_part}_{safe_name[:40]}"
         try:
             result = cloudinary.uploader.upload(
                 image_data,
                 resource_type="image",
                 public_id=public_id,
-                folder="barcodes",                # Optional nếu public_id đã có prefix
                 overwrite=False,
                 unique_filename=True,
-                allowed_formats=["jpg", "jpeg", "png", "webp", "gif"],  # Giới hạn format an toàn
-                tags=["barcode-scanner", "auto"],     # Optional: thêm tag để quản lý sau
+                allowed_formats=["jpg", "jpeg", "png", "webp", "gif"],
+                tags=["barcode-scanner", "auto"],
             )
             secure_url = result.get("secure_url")
             public_id = result["public_id"]

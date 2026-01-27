@@ -1,5 +1,5 @@
 import os
-from typing import AsyncGenerator, Optional
+from typing import Optional
 
 from fastapi import Depends, Request, exceptions
 from fastapi_users import FastAPIUsers, IntegerIDMixin, BaseUserManager, models
@@ -11,7 +11,7 @@ from fastapi_users.authentication import (
 from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
 
 from infrastructure.database import UserModel
-from infrastructure.user_db import get_user_db  # Dependency get_user_db
+from infrastructure.user_db import get_user_db
 from passlib.context import CryptContext
 
 SECRET = os.getenv("JWT_SECRET")
@@ -42,16 +42,14 @@ class UserManager(IntegerIDMixin, BaseUserManager[UserModel, int]):
     async def on_after_register(self, user: models.UP, request: Optional[Request] = None):
         print(f"User {user.id} has registered.")
 
-    # Override để dùng Argon2id
     async def hash_password(self, password: str) -> str:
         return pwd_context.hash(password)
 
     async def verify_password(self, password: str, hashed_password: str) -> bool:
         return pwd_context.verify(password, hashed_password)
 
-# JWT Strategy
 def get_jwt_strategy() -> JWTStrategy:
-    return JWTStrategy(secret=SECRET, lifetime_seconds=60 * 30)  # 30 phút
+    return JWTStrategy(secret=SECRET, lifetime_seconds=60 * 30)
 
 auth_backend = AuthenticationBackend(
     name="jwt",
@@ -59,16 +57,13 @@ auth_backend = AuthenticationBackend(
     get_strategy=get_jwt_strategy,
 )
 
-# Cách tốt nhất: Dependency function cho get_user_manager
 def get_user_manager(user_db: SQLAlchemyUserDatabase = Depends(get_user_db)):
     return UserManager(user_db)
 
-# Khởi tạo FastAPIUsers (SỬA Ở ĐÂY)
 fastapi_users = FastAPIUsers[UserModel, int](
     get_user_manager,
     [auth_backend]
 )
 
-# Dependencies cho current user
 current_active_user = fastapi_users.current_user(active=True)
 current_superuser = fastapi_users.current_user(active=True, superuser=True)

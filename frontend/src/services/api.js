@@ -1,12 +1,11 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
 });
 
-// Thêm JWT vào header tự động
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -34,6 +33,15 @@ export const login = async (email, password) => {
   return response.data.access_token;
 };
 
+export const register = async (email, password, fullName = '') => {
+  const response = await api.post('/auth/jwt/register', {
+    email,
+    password,
+    full_name: fullName,
+  });
+  return response.data;
+};
+
 export const scanBarcode = async (file) => {
   const formData = new FormData();
   formData.append('file', file);
@@ -52,18 +60,22 @@ export const deleteBarcode = async (id) => {
   await api.delete(`/barcodes/${id}`);
 };
 
-export default api;
-
-export const register = async (email, password, fullName = '') => {
-  const response = await api.post('/auth/register', {
-    email,
-    password,
-    full_name: fullName,
-  });
-  return response.data;
-};
-
 export const getUserInfo = async () => {
   const response = await api.get('/users/me');
   return response.data;
 };
+
+export const updateUser = async (data) => {
+  await api.patch('/users/me', data);
+};
+
+export const getUsers = async () => {
+  const response = await api.get('/users');
+  return response.data;
+};
+
+export const deleteUser = async (id) => {
+  await api.delete(`/users/${id}`);
+};
+
+export default api;

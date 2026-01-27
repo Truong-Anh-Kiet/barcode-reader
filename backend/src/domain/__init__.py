@@ -5,4 +5,12 @@
     that define the business rules and data structures.
 """
 from .entities import BarcodeResult
-from .interfaces import IBarcodeDetector, IBarcodeRepository
+from .interfaces import IBarcodeDetector, IBarcodeRepository, IImageStorage, IImageProcessor
+
+__all__ = [
+    "BarcodeResult",
+    "IBarcodeDetector",
+    "IBarcodeRepository",
+    "IImageStorage",
+    "IImageProcessor",
+]
