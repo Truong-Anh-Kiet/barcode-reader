@@ -1,28 +1,37 @@
 import { useEffect, useState } from 'react';
-import Modal from 'react-modal';
-import ReactPaginate from 'react-paginate';
-import { getBarcodes, deleteBarcode } from '../services/api';
+import { getBarcodes, deleteBarcode , getUserInfo } from '../services/api';
 import { toast } from 'react-toastify';
-
-Modal.setAppElement('#root');
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Loader2 } from 'lucide-react';
 
 const BarcodeList = () => {
   const [barcodes, setBarcodes] = useState([]);
-  const [error, setError] = useState('');
+  const [filtered, setFiltered] = useState([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState('');
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(0);
-  const [totalCount, setTotalCount] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
   const [selectedBarcode, setSelectedBarcode] = useState(null);
+  const [currentUser, setCurrentUser] = useState(null);
   const itemsPerPage = 10;
-  const fetchBarcodes = async () => {
+
+  const fetchBarcodes = async (page = 1) => {
     setLoading(true);
     try {
-      const { data, total } = await getBarcodes(itemsPerPage, currentPage * itemsPerPage);
+      const { data, total } = await getBarcodes(itemsPerPage, (page - 1) * itemsPerPage);
       setBarcodes(data);
-      setTotalCount(total);
+      setFiltered(data);
+      setTotalPages(Math.ceil(total / itemsPerPage));
+      setCurrentPage(page);
     } catch (err) {
-      setError('Failed to load list');
-      toast.error('Failed to load barcode list');
+      toast.error('Failed to load barcodes');
     } finally {
       setLoading(false);
     }
@@ -30,14 +39,14 @@ const BarcodeList = () => {
 
   useEffect(() => {
     fetchBarcodes();
-  }, [currentPage]);
+  }, []);
 
   useEffect(() => {
-    let filtered = barcodes.filter((item) => 
+    const filteredData = barcodes.filter(item =>
       item.content.toLowerCase().includes(searchTerm.toLowerCase()) &&
-      (filterType ? item.barcode_type === filterType : true)
+      (!filterType || item.barcode_type === filterType)
     );
-    setFilteredBarcodes(filtered);
+    setFiltered(filteredData);
   }, [searchTerm, filterType, barcodes]);
 
   useEffect(() => {
@@ -51,137 +60,135 @@ const BarcodeList = () => {
   }, []);
 
   const handleDelete = async (id) => {
+    if (!window.confirm('Delete this barcode?')) return;
     try {
       await deleteBarcode(id);
-      toast.success('Delete successful');
-      fetchBarcodes();
-    } catch (err) {
+      toast.success('Deleted');
+      fetchBarcodes(currentPage);
+    } catch {
       toast.error('Delete failed');
     }
   };
 
-  const handlePageChange = (data) => {
-    setCurrentPage(data.selected);
-  };
-
-  const pageCount = Math.ceil(totalCount / itemsPerPage);
-
   return (
-    <div className="bg-white p-8 rounded-lg shadow-md">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-semibold">Saved Barcodes List</h2>
-        <button onClick={fetchBarcodes} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-          Refresh
-        </button>
-      </div>
-      <div className="flex gap-4 mb-4">
-        <input
-          type="text"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          placeholder="Find by content..."
-          className="px-4 py-2 border rounded-md flex-1"
-        />
-        <select
-          value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
-          className="px-4 py-2 border rounded-md"
-        >
-          <option value="">All Types</option>
-          <option value="EAN13">EAN13</option>
-          <option value="QR_CODE">QR Code</option>
-        </select>
-      </div>
-      {loading && <p className="text-center text-gray-500">Loading...</p>}
-      {error && <p className="text-red-600 text-center mb-4">{error}</p>}
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">ID</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Content</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {barcodes.map((item) => (
-              <tr key={item.id}>
-                <td className="px-6 py-4 whitespace-nowrap">{item.id}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{item.content}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{item.barcode_type}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  {item.image_url && (
-                    <img src={item.image_url} alt="Original" className="w-20 h-20 object-cover rounded shadow" />
-                  )}
-                  {item.processed_image_url && (
-                    <img src={item.processed_image_url} alt="Processed barcode" className="w-20 h-20 object-cover rounded shadow mt-2" loading="lazy" />
-                  )}
-                  <button onClick={() => setSelectedBarcode(item)} className="text-blue-600 hover:underline mr-4">Detail</button>
-                  {!loadingUser && currentUser?.is_superuser && (
-                    <button onClick={() => handleDelete(item.id)} className="text-red-600 hover:underline">Delete</button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <ReactPaginate
-        previousLabel="Before"
-        nextLabel="After"
-        breakLabel="..."
-        pageCount={pageCount}
-        marginPagesDisplayed={2}
-        pageRangeDisplayed={5}
-        onPageChange={handlePageChange}
-        containerClassName="flex justify-center mt-6 space-x-2"
-        pageClassName="bg-white px-4 py-2 border rounded cursor-pointer"
-        activeClassName="bg-blue-600 text-white"
-      />
-      <Modal
-        isOpen={!!selectedBarcode}
-        onRequestClose={() => setSelectedBarcode(null)}
-        className="bg-white p-8 rounded-lg shadow-lg max-w-md mx-auto mt-20"
-        overlayClassName="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center"
-      >
-        {selectedBarcode && (
-          <div>
-            <h2 className="text-2xl font-bold mb-4">Detail Barcode</h2>
-            <p><strong>ID:</strong> {selectedBarcode.id}</p>
-            <p><strong>Content:</strong> {selectedBarcode.content}</p>
-            <p><strong>Type:</strong> {selectedBarcode.barcode_type}</p>
-            <p><strong>Created At:</strong> {new Date(selectedBarcode.created_at).toLocaleString()}</p>
-            {selectedBarcode.image_url && (
-              <div className="mt-4">
-                <p className="font-semibold mb-2">Original Image:</p>
-                <img
-                  src={selectedBarcode.image_url}
-                  alt="Original barcode"
-                  className="max-w-full rounded shadow-lg"
-                  loading="lazy"
-                />
-              </div>
-            )}
-
-            {selectedBarcode.processed_image_url && (
-              <div className="mt-4">
-                <p className="font-semibold mb-2">Processed Image:</p>
-                <img
-                  src={selectedBarcode.processed_image_url}
-                  alt="Processed barcode"
-                  className="max-w-full rounded shadow-lg"
-                  loading="lazy"
-                />
-              </div>
-            )}
-            <button onClick={() => setSelectedBarcode(null)} className="mt-4 bg-red-600 text-white px-4 py-2 rounded">
-              Close
-            </button>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-2xl">Barcode History</CardTitle>
+        <div className="flex flex-col sm:flex-row gap-4 mt-4">
+          <Input
+            placeholder="Search content..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="sm:max-w-xs"
+          />
+          <Select value={filterType} onValueChange={setFilterType}>
+            <SelectTrigger className="sm:w-48">
+              <SelectValue placeholder="All types" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">All types</SelectItem>
+              <SelectItem value="QR_CODE">QR Code</SelectItem>
+              <SelectItem value="CODE_128">Code 128</SelectItem>
+              {/* Thêm type khác nếu cần */}
+            </SelectContent>
+          </Select>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <div className="flex justify-center py-8">
+            <Loader2 class loading h-8 w-8 animate-spin />
           </div>
+        ) : (
+          <>
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Content</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filtered.map((item) => (
+                    <TableRow key={item.id}>
+                      <TableCell className="font-medium">{item.content}</TableCell>
+                      <TableCell>{item.barcode_type}</TableCell>
+                      <TableCell>{new Date(item.created_at).toLocaleString()}</TableCell>
+                      <TableCell className="text-right space-x-2">
+                        <Button size="sm" onClick={() => setSelectedBarcode(item)}>View</Button>
+                        {currentUser?.is_superuser && (
+                          <Button size="sm" variant="destructive" onClick={() => handleDelete(item.id)}>
+                            Delete
+                          </Button>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {totalPages > 1 && (
+              <Pagination className="mt-6">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      onClick={() => fetchBarcodes(currentPage - 1)}
+                      className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                  {[...Array(totalPages)].map((_, i) => (
+                    <PaginationItem key={i}>
+                      <PaginationLink
+                        onClick={() => fetchBarcodes(i + 1)}
+                        isActive={currentPage === i + 1}
+                        className="cursor-pointer"
+                      >
+                        {i + 1}
+                      </PaginationLink>
+                    </PaginationItem>
+                  ))}
+                  <PaginationItem>
+                    <PaginationNext
+                      onClick={() => fetchBarcodes(currentPage + 1)}
+                      className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            )}
+          </>
         )}
-      </Modal>
-    </div>
+
+        <Dialog open={!!selectedBarcode} onOpenChange={() => setSelectedBarcode(null)}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Barcode Detail</DialogTitle>
+            </DialogHeader>
+            {selectedBarcode && (
+              <div className="space-y-4">
+                <div><strong>ID:</strong> {selectedBarcode.id}</div>
+                <div><strong>Content:</strong> {selectedBarcode.content}</div>
+                <div><strong>Type:</strong> {selectedBarcode.barcode_type}</div>
+                <div><strong>Created:</strong> {new Date(selectedBarcode.created_at).toLocaleString()}</div>
+                {selectedBarcode.image_url && (
+                  <img src={selectedBarcode.image_url} alt="Original" className="w-full rounded-lg shadow" />
+                )}
+                {selectedBarcode.processed_image_url && (
+                  <img src={selectedBarcode.processed_image_url} alt="Processed" className="w-full rounded-lg shadow mt-4" />
+                )}
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="secondary" onClick={() => setSelectedBarcode(null)}>Close</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </CardContent>
+    </Card>
   );
 };
 

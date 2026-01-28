@@ -2,97 +2,130 @@ import { useState, useRef } from 'react';
 import Webcam from 'react-webcam';
 import { scanBarcode } from '../services/api';
 import { toast } from 'react-toastify';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Loader2 } from 'lucide-react';
 
 const ScanUploader = ({ onScanSuccess }) => {
   const [file, setFile] = useState(null);
-  const [results, setResults] = useState(null);
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [useWebcam, setUseWebcam] = useState(false);
+  const [webcamReady, setWebcamReady] = useState(false);
+  const [results, setResults] = useState(null);
   const webcamRef = useRef(null);
 
 const handleCapture = async () => {
+    let blob;
+    let filename;
+
     if (useWebcam) {
+      if (!webcamReady) {
+        toast.error('Webcam not ready. Please allow camera access.');
+        return;
+      }
       const imageSrc = webcamRef.current.getScreenshot();
-      if (!imageSrc) {
-      toast.error('Cannot capture image from webcam. Check camera permissions.');
+      if (!imageSrc) return;
+      blob = await fetch(imageSrc).then(res => res.blob());
+      filename = 'webcam.jpg';
+    } else if (file) {
+      blob = file;
+      filename = file.name;
+    } else {
+      toast.error('Please select a file or use webcam');
       return;
     }
-      const blob = await fetch(imageSrc).then((res) => res.blob());
-      await performScan(blob, 'webcam.jpg');
-    } else if (file) {
-      await performScan(file, file.name);
-    } else {
-      toast.error('Please select a file or use the webcam');
-    }
-  };
 
-const performScan = async (fileBlob, filename) => {
     setLoading(true);
-    setError('');
     try {
-      const data = await scanBarcode(fileBlob);
+      const data = await scanBarcode(blob);
       setResults(data);
       toast.success('Scan successful!');
       if (onScanSuccess) onScanSuccess();
     } catch (err) {
-      setError(err.response?.data?.detail || 'Scan failed');
-      toast.error(error);
+      toast.error(err.response?.data?.detail || 'Scan failed');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="bg-white p-8 rounded-lg shadow-md mb-12">
-      <h2 className="text-2xl font-semibold mb-6">Scan Barcode</h2>
-      <div className="flex items-center gap-4 mb-6">
-        <button
-          onClick={() => setUseWebcam(!useWebcam)}
-          className="bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
-        >
-          {useWebcam ? 'Switch to Upload File' : 'Use Webcam'}
-        </button>
-        {!useWebcam ? (
-          <input
-            type="file"
-            accept="image/*"
-            onChange={(e) => setFile(e.target.files[0])}
-            className="file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-          />
-        ) : (
-          <Webcam
-            audio={false}
-            ref={webcamRef}
-            screenshotFormat="image/jpeg"
-            className="rounded shadow-md"
-          />
-        )}
-        <button
-          onClick={handleCapture}
-          disabled={loading}
-          className="bg-green-600 text-white px-6 py-3 rounded-md hover:bg-green-700 disabled:opacity-50"
-        >
-          {loading ? 'Scanning...' : 'Scan'}
-        </button>
-      </div>
-      {error && <p className="text-red-600 font-medium mb-4">{error}</p>}
-      {results && (
-        <div>
-          <h3 className="text-xl font-semibold mb-4">Detected {results.count} Barcode</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {results.data.map((item, idx) => (
-              <div key={idx} className="bg-gray-50 p-6 rounded-lg shadow">
-                <p><strong>Content:</strong> {item.content}</p>
-                <p><strong>Type:</strong> {item.type}</p>
-                {item.image_url && <img src={item.image_url} alt="Original" className="mt-4 rounded shadow w-full object-cover" loading="lazy" />}
-                {item.processed_image_url && <img src={item.processed_image_url} alt="Processed" className="mt-2 rounded shadow w-full object-cover" loading="lazy" />}
-              </div>
-            ))}
-          </div>
+    <Card className="mb-12">
+      <CardHeader>
+        <CardTitle className="text-2xl">Scan Barcode</CardTitle>
+        <CardDescription>Upload an image or use your webcam to scan barcodes</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="flex gap-4 items-center flex-wrap">
+          <Button
+            variant={useWebcam ? 'default' : 'outline'}
+            onClick={() => setUseWebcam(!useWebcam)}
+          >
+            {useWebcam ? 'Switch to Upload' : 'Use Webcam'}
+          </Button>
+
+          {!useWebcam ? (
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(e) => setFile(e.target.files?.[0] || null)}
+              className="file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-secondary file:text-secondary-foreground hover:file:bg-secondary/80"
+            />
+          ) : (
+            <div className="w-full max-w-md mx-auto">
+              <Webcam
+                audio={false}
+                ref={webcamRef}
+                screenshotFormat="image/jpeg"
+                className="w-full rounded-lg shadow-md"
+                onUserMedia={() => setWebcamReady(true)}
+                onUserMediaError={() => {
+                  toast.error('Camera access denied');
+                  setWebcamReady(false);
+                }}
+              />
+            </div>
+          )}
         </div>
-      )}
-    </div>
+
+        <Button
+          onClick={handleCapture}
+          disabled={loading || (!file && !useWebcam) || (useWebcam && !webcamReady)}
+          size="lg"
+          className="w-full"
+        >
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Scanning...
+            </>
+          ) : (
+            'Scan Barcode'
+          )}
+        </Button>
+
+        {results && (
+          <div className="space-y-6 pt-6 border-t">
+            <h3 className="text-xl font-semibold">Results ({results.count} detected)</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {results.data.map((item, idx) => (
+                <Card key={idx}>
+                  <CardContent className="pt-6 space-y-3">
+                    <p><strong>Content:</strong> {item.content}</p>
+                    <p><strong>Type:</strong> {item.type || item.barcode_type}</p>
+                    {item.image_url && (
+                      <img src={item.image_url} alt="Original" className="w-full rounded-md shadow" loading="lazy" />
+                    )}
+                    {item.processed_image_url && (
+                      <img src={item.processed_image_url} alt="Processed" className="w-full rounded-md shadow mt-4" loading="lazy" />
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 };
 

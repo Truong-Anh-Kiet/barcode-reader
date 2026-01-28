@@ -13,10 +13,9 @@ dependencies = [
     "asyncpg>=0.31.0",
     "click>=8.3.1",
     "cloudinary>=1.44.1",
-    "fastapi>=0.128.0",
+    "fastapi[standard]>=0.128.0",
     "fastapi-mail>=1.6.1",
     "fastapi-users[sqlalchemy]>=15.0.3",
-    "isort>=7.0.0",
     "numpy>=2.4.0",
     "opencv-python-headless>=4.11.0.86",
     "passlib[argon2]>=1.7.4",
@@ -37,4 +36,5 @@ dev = [
     "flake8>=7.1.0",
     "pytest>=9.0.2",
     "pytest-asyncio>=1.3.0",
+    "isort>=7.0.0",
 ]

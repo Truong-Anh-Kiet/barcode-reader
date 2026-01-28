@@ -1,7 +1,10 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
-import { getUsers, deleteUser } from '../services/api';
+import { getUsers, deleteUser, getUserInfo } from '../services/api';
 import { useNavigate } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
 const AdminPanel = () => {
   const [users, setUsers] = useState([]);
@@ -17,11 +20,10 @@ const AdminPanel = () => {
           navigate('/');
           return;
         }
-
         const data = await getUsers();
         setUsers(data);
       } catch (err) {
-        toast.error('Failed to load data or access denied');
+        toast.error('Failed to load users');
         navigate('/');
       } finally {
         setLoading(false);
@@ -31,6 +33,7 @@ const AdminPanel = () => {
   }, [navigate]);
   
   const handleDelete = async (id) => {
+    if (!window.confirm('Delete this user?')) return;
     try {
       await deleteUser(id);
       toast.success('User deleted successfully');
@@ -41,33 +44,39 @@ const AdminPanel = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <h1 className="text-3xl font-bold mb-6">Panel Admin</h1>
-      {loading ? <p>Loading...</p> : (
-        <table className="min-w-full bg-white shadow-md rounded">
-          <thead>
-            <tr>
-              <th className="py-2 px-4 border-b">ID</th>
-              <th className="py-2 px-4 border-b">Email</th>
-              <th className="py-2 px-4 border-b">Full Name</th>
-              <th className="py-2 px-4 border-b">Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((user) => (
-              <tr key={user.id}>
-                <td className="py-2 px-4 border-b">{user.id}</td>
-                <td className="py-2 px-4 border-b">{user.email}</td>
-                <td className="py-2 px-4 border-b">{user.full_name}</td>
-                <td className="py-2 px-4 border-b">
-                  <button onClick={() => handleDelete(user.id)} className="text-red-600 hover:underline">Delete</button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-    </div>
+    <Card className="max-w-4xl mx-auto">
+      <CardHeader>
+        <CardTitle className="text-3xl">Admin Panel</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="rounded-md border">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Full Name</TableHead>
+                <TableHead className="text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {users.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell>{user.id}</TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  <TableCell>{user.full_name || '-'}</TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="destructive" size="sm" onClick={() => handleDelete(user.id)}>
+                      Delete
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 

@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { getUserInfo } from '../services/api';
 import { toast } from 'react-toastify';
+import { Card, CardContent } from '@/components/ui/card';
 import { UserCircleIcon } from '@heroicons/react/24/outline';
+import { Badge } from '@/components/ui/badge';
 
 const UserProfile = () => {
   const [user, setUser] = useState(null);
@@ -13,7 +15,7 @@ const UserProfile = () => {
         const data = await getUserInfo();
         setUser(data);
       } catch (err) {
-        toast.error('Unable to load user information.');
+        toast.error('Failed to load user information.');
       } finally {
         setLoading(false);
       }
@@ -21,25 +23,23 @@ const UserProfile = () => {
     fetchUser();
   }, []);
 
-  if (loading) return <div className="text-gray-500">Loading...</div>;
-
-  if (!user) return null;
+  if (loading || !user) return null;
 
   return (
-    <div className="flex items-center gap-4 bg-white px-6 py-3 rounded-lg shadow-md">
-      <UserCircleIcon className="h-10 w-10 text-blue-600" />
-      <div>
-        <p className="font-semibold text-gray-800">
-          {user.full_name || user.email}
-        </p>
-        <p className="text-sm text-gray-600">{user.email}</p>
-        {user.is_superuser && (
-          <span className="inline-block mt-1 px-3 py-1 bg-red-100 text-red-700 text-xs font-medium rounded-full">
-            Admin
-          </span>
-        )}
-      </div>
-    </div>
+    <Card className="mb-6">
+      <CardContent className="flex items-center gap-4 pt-6">
+        <UserCircleIcon className="h-12 w-12 text-blue-600" />
+        <div>
+          <p className="text-lg font-semibold">
+            {user.full_name || user.email}
+          </p>
+          <p className="text-sm text-muted-foreground">{user.email}</p>
+          {user.is_superuser && (
+            <Badge variant="destructive" className="mt-1">Admin</Badge>
+          )}
+        </div>
+      </CardContent>
+    </Card>
   );
 };
 

@@ -2,10 +2,23 @@
 export default {
   content: [
     "./index.html",
-    "./src/**/*.{js,jsx,ts,tsx}",  // Scan tất cả file JSX
+    "./src/**/*.{js,jsx,ts,tsx}",
   ],
   theme: {
-    extend: {},
+    extend: {
+      fontFamily: {
+        sans: [
+          "var(--font-sans)",
+          { fontFeatureSettings: '"cv11", "ss01"' },
+          { fontVariationSettings: '"opsz" 32' },
+        ],
+        mono: [
+          "var(--font-mono)",
+          { fontFeatureSettings: '"cv11", "ss01"' },
+          { fontVariationSettings: '"opsz" 32' },
+        ],
+      },
+    },
   },
-  plugins: [],
+  plugins: [require("tailwindcss-animate")],
 }

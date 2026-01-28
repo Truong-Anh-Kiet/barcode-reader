@@ -36,7 +36,7 @@ class BarcodeModel(Base):
     content: Mapped[str] = mapped_column(nullable=False, index=True)
     barcode_type: Mapped[str] = mapped_column(nullable=False)
     bounding_box: Mapped[list[int]] = mapped_column(ARRAY(Integer), nullable=False)
-    user_id: Mapped[int] = mapped_column(ForeignKey('user.id'), nullable=False)
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id'), nullable=False)
     image_url: Mapped[str | None] = mapped_column(nullable=True)
     processed_image_url: Mapped[str | None] = mapped_column(nullable=True)
     original_public_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)

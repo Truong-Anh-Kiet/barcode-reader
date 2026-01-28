@@ -29,26 +29,10 @@ from application.auth import fastapi_users,auth_backend, current_superuser
 
 from application.schemas import UserRead, UserCreate, UserUpdate
 
-from fastapi_users.router import get_reset_password_router
-from fastapi_mail import FastMail, ConnectionConfig
-
 logging.basicConfig(
     level=logging.WARNING,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
-
-conf = ConnectionConfig(
-    MAIL_USERNAME=os.getenv("SMTP_USER"),
-    MAIL_PASSWORD=os.getenv("SMTP_PASSWORD"),
-    MAIL_FROM=os.getenv("FROM_EMAIL"),
-    MAIL_PORT=int(os.getenv("SMTP_PORT", 587)),
-    MAIL_SERVER=os.getenv("SMTP_HOST"),
-    MAIL_TLS=True,
-    MAIL_SSL=False,
-    USE_CREDENTIALS=True,
-)
-
-mail = FastMail(conf)
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -81,7 +65,7 @@ app.include_router(
 )
 
 app.include_router(
-    get_reset_password_router(mail),
+    fastapi_users.get_reset_password_router(),
     prefix="/auth",
     tags=["auth"]
 )
