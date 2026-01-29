@@ -8,6 +8,7 @@ and starts the server using Uvicorn.
 import sys
 import os
 import logging
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -48,9 +49,13 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-app.mount("/static",
-          StaticFiles(directory="src/static"),
-          name="static")
+BASE_DIR = Path(__file__).resolve().parent
+STATIC_DIR = BASE_DIR / "src" / "static"
+
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+else:
+    print(f"[WARN] Static directory not found: {STATIC_DIR}")
 
 app.include_router(
     fastapi_users.get_auth_router(auth_backend),
@@ -71,9 +76,21 @@ app.include_router(
 )
 
 app.include_router(
-    fastapi_users.get_users_router(UserRead, UserUpdate),
+    fastapi_users.get_users_router(
+        UserRead,
+        UserUpdate,
+    ),
     prefix="/users",
     tags=["users"],
+)
+
+app.include_router(
+    fastapi_users.get_users_router(
+        UserRead,
+        UserUpdate,
+    ),
+    prefix="/admin/users",
+    tags=["admin"],
     dependencies=[Depends(current_superuser)]
 )
 

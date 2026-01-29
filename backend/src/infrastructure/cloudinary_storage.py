@@ -67,7 +67,7 @@ class CloudinaryStorage(IImageStorage):
             logger.warning("Cloudinary not configured yet. Attempting fallback config.")
             configure_cloudinary()
 
-    def upload_image(self, image_data: bytes, filename: str) -> Tuple[str, str]:
+    def upload_image(self, image_data: bytes, filename: str, user_id: int) -> Tuple[str, str]:
         """
         Uploads image data to Cloudinary and returns the secure public URL.
 
@@ -92,7 +92,7 @@ class CloudinaryStorage(IImageStorage):
         safe_name = "".join(c for c in base_name if c.isalnum() or c in ['-', '_']).strip('_-')
 
         unique_part = uuid.uuid4().hex[:10]
-        public_id = f"barcodes/{unique_part}_{safe_name[:40]}"
+        public_id = f"barcodes/user_{user_id}/{unique_part}_{safe_name[:40]}"
         try:
             result = cloudinary.uploader.upload(
                 image_data,

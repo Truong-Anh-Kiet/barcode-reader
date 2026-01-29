@@ -75,11 +75,11 @@ class UserManager(IntegerIDMixin, BaseUserManager[UserModel, int]):
         print(f"Password reset email has been sent to user {user.id}")
 
 def get_jwt_strategy() -> JWTStrategy:
-    return JWTStrategy(secret=SECRET, lifetime_seconds=60 * 30)
+    return JWTStrategy(secret=SECRET, lifetime_seconds=60 * 60 * 24)
 
 auth_backend = AuthenticationBackend(
     name="jwt",
-    transport=BearerTransport(tokenUrl="auth/jwt/login"),
+    transport=BearerTransport(tokenUrl="auth/login"),
     get_strategy=get_jwt_strategy,
 )
 

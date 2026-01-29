@@ -6,8 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { EnvelopeIcon, LockClosedIcon, UserIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
-import { Loader2 } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, Loader2 } from 'lucide-react';
 
 const AuthPage = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -30,7 +29,6 @@ const AuthPage = () => {
     setPassword('');
     setConfirmPassword('');
     setFullName('');
-    setError('');
   }, [isLogin]);
 
   const validateForm = () => {
@@ -55,7 +53,6 @@ const AuthPage = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
     if (!validateForm()) return;
 
     setLoading(true);
@@ -67,28 +64,25 @@ const AuthPage = () => {
         navigate('/');
       } else {
         await register(email, password, fullName);
-        setError('');
         toast.success('Registration successful! Please log in.');
         setIsLogin(true);
       }
     } catch (err) {
-      const errMsg = err.response?.data?.detail || (isLogin ? 'Login failed.' : 'Registration failed.');
-      toast.error(errMsg);
-      setError(errMsg);
+      toast.error(err.response?.data?.detail || 'An error occurred');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-<     Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center px-4">
+<     Card className="w-full max-w-md shadow-lg border border-gray-200 rounded-xl bg-white">
         <CardHeader className="space-y-1">
           <CardTitle className="text-2xl font-bold text-center">
             {isLogin ? 'Welcome Back' : 'Create Account'}
           </CardTitle>
           <CardDescription className="text-center">
-            {isLogin ? 'Login into Barcode Scanner' : 'Get started with your free account'}
+            {isLogin ? 'Login to Barcode Scanner' : 'Get started with your free account'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -97,14 +91,15 @@ const AuthPage = () => {
               <div className="space-y-2">
                 <Label htmlFor="fullName">Full Name</Label>
                 <div className="relative">
-                  <UserIcon className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
                     id="fullName"
                     type="text"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
                     placeholder="Nguyen Van A"
-                    className="pl-10"
+                    className="pl-10 pr-4 h-11"
+                    autoComplete="username"
                   />
                 </div>
               </div>
@@ -113,7 +108,7 @@ const AuthPage = () => {
             <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <div className="relative">
-                  <EnvelopeIcon className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
                     id="email"
                     type="email"
@@ -121,7 +116,8 @@ const AuthPage = () => {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     ref={emailRef}
-                    className="pl-10"
+                    className="pl-10 pr-4 h-11"
+                    autoComplete="email"
                   />
                 </div>
               </div>
@@ -129,21 +125,23 @@ const AuthPage = () => {
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
-                <LockClosedIcon className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   placeholder="••••••••"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10"
+                  className="pl-10 pr-4 h-11"
+                  autoComplete={isLogin ? "current-password" : "new-password"}
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-3"
+                  className="absolute right-3 top-1/2 -translate-y-1/2"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword ? <EyeSlashIcon className="h-5 w-5 text-gray-400" /> : <EyeIcon className="h-5 w-5 text-gray-400" />}
+                  {showPassword ? <EyeOff className="h-5 w-5 text-gray-400" /> : <Eye className="h-5 w-5 text-gray-400" />}
                 </button>
               </div>
             </div>
@@ -152,7 +150,7 @@ const AuthPage = () => {
               <div className="space-y-2">
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
                 <div className="relative">
-                  <LockClosedIcon className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                   <Input
                     id="confirmPassword"
                     type={showConfirm ? 'text' : 'password'}
@@ -160,13 +158,15 @@ const AuthPage = () => {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     className="pl-10 pr-10"
+                    autoComplete="new-password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirm(!showConfirm)}
                     className="absolute right-3 top-3.5"
+                    aria-label={showConfirm ? 'Hide password' : 'Show password'}
                   >
-                    {showConfirm ? <EyeSlashIcon className="h-5 w-5 text-gray-400" /> : <EyeIcon className="h-5 w-5 text-gray-400" />}
+                    {showConfirm ? <EyeOff className="h-5 w-5 text-gray-400" /> : <Eye className="h-5 w-5 text-gray-400" />}
                   </button>
                 </div>
               </div>

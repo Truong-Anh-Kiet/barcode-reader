@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { getUserInfo, updateUser } from '../services/api';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ArrowLeft } from 'lucide-react';
 
 const EditProfile = () => {
   const [formData, setFormData] = useState({ fullName: '', phoneNumber: '' });
@@ -42,8 +42,8 @@ const EditProfile = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center px-4">
+      <Card className="w-full max-w-md bg-white shadow-2xl">
         <CardHeader>
           <CardTitle className="text-2xl font-bold text-center">Edit Profile</CardTitle>
           <CardDescription className="text-center">
@@ -56,7 +56,7 @@ const EditProfile = () => {
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-6">
+            <form onSubmit={(e) => {e.preventDefault(); if (!submitting) handleSubmit();}}className="space-y-6">
               <div className="space-y-2">
                 <Label htmlFor="fullName">Full Name</Label>
                 <Input
@@ -79,16 +79,27 @@ const EditProfile = () => {
                 />
               </div>
 
-              <Button type="submit" className="w-full" size="lg">
-                {submitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Updating...
-                  </>
-                ) : (
-                  'Update Profile'
-                )}
-              </Button>
+              <div className="flex gap-3">
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => navigate('/')}
+                >
+                  Cancel
+                </Button>
+
+                <Button type="submit" className="w-full" size="lg" disabled={submitting}>
+                  {submitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Updating...
+                    </>
+                  ) : (
+                    'Update Profile'
+                  )}
+                </Button>
+              </div>
             </form>
           )}
         </CardContent>

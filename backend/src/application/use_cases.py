@@ -8,7 +8,6 @@ import logging
 from typing import List
 from domain.entities import BarcodeResult
 from domain.interfaces import IBarcodeDetector, IBarcodeRepository, IImageStorage, IImageProcessor
-from application.auth import current_active_user
 from infrastructure.database import UserModel
 
 class ScanBarcodeUseCase:
@@ -44,22 +43,36 @@ class ScanBarcodeUseCase:
             List[BarcodeResult]: Collection of all detected barcodes.
         """
         logging.info(f"Starting scan for file: {filename}")
-        # Full preprocessing pipeline
-        processed_data = self.processor.process_image(image_data)
-        processed_filename = f"processed_{filename}"
 
-        # Detect
-        original_url, original_public_id = self.storage.upload_image(image_data, filename)
-        processed_url, processed_public_id = self.storage.upload_image(processed_data, processed_filename)
+        original_url, original_public_id = self.storage.upload_image(
+            image_data,
+            filename,
+            user.id
+        )
+
+        processed_data = self.processor.process_image(image_data)
         results = self.processor.multi_scale_detect(processed_data, self.detector)
+
+        if not results:
+            return []
+
+        boxed_image = self.detector.draw_boxes(image_data, results)
+        boxed_filename = f"boxed_{filename}"
+
+        boxed_url, boxed_public_id = self.storage.upload_image(
+            boxed_image,
+            boxed_filename,
+            user.id
+        )
 
         for item in results:
             item.image_url = original_url
-            item.processed_image_url = processed_url
+            item.processed_image_url = boxed_url
             item.original_public_id = original_public_id
-            item.processed_public_id = processed_public_id
+            item.processed_public_id = boxed_public_id
             item.user_id = user.id
             await self.repository.save(item)
+
         logging.info(f"Detected {len(results)} barcodes")
         return results
 

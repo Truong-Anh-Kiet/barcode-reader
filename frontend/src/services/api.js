@@ -29,12 +29,12 @@ export const login = async (email, password) => {
   const formData = new FormData();
   formData.append('username', email);
   formData.append('password', password);
-  const response = await api.post('/auth/jwt/login', formData);
+  const response = await api.post('/auth/login', formData);
   return response.data.access_token;
 };
 
 export const register = async (email, password, fullName = '') => {
-  const response = await api.post('/auth/jwt/register', {
+  const response = await api.post('/auth/register', {
     email,
     password,
     full_name: fullName,

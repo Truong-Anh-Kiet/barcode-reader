@@ -38,7 +38,8 @@ class PostgresBarcodeRepository(IBarcodeRepository):
         stmt = select(BarcodeModel).where(
             BarcodeModel.content == barcode.content,
             BarcodeModel.barcode_type == barcode.barcode_type,
-            BarcodeModel.image_url == barcode.image_url
+            BarcodeModel.image_url == barcode.image_url,
+            BarcodeModel.user_id == barcode.user_id
         )
         result = await self.session.execute(stmt)
         if result.scalar_one_or_none():

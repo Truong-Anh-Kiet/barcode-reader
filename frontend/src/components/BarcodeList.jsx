@@ -86,9 +86,9 @@ const BarcodeList = () => {
               <SelectValue placeholder="All types" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All types</SelectItem>
-              <SelectItem value="QR_CODE">QR Code</SelectItem>
-              <SelectItem value="CODE_128">Code 128</SelectItem>
+              <SelectItem placeholder="">All types</SelectItem>
+              <SelectItem placeholder="QR_CODE">QR Code</SelectItem>
+              <SelectItem placeholder="CODE_128">Code 128</SelectItem>
               {/* Thêm type khác nếu cần */}
             </SelectContent>
           </Select>
@@ -97,7 +97,7 @@ const BarcodeList = () => {
       <CardContent>
         {loading ? (
           <div className="flex justify-center py-8">
-            <Loader2 class loading h-8 w-8 animate-spin />
+            <Loader2 className="h-8 w-8 animate-spin" />
           </div>
         ) : (
           <>

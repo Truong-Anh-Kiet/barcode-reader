@@ -94,15 +94,18 @@ class OpenCVImageProcessor(IImageProcessor):
         Returns:
             List[BarcodeResult]: Merged detection results.
         """
-        img = cv2.imdecode(np.frombuffer(processed_data, np.uint8), cv2.IMREAD_GRAYSCALE)
-        if img is None:
+        img_color = cv2.imdecode(np.frombuffer(processed_data, np.uint8), cv2.IMREAD_COLOR)
+        if img_color is None:
             raise ValueError("Invalid processed data")
 
         results = []
         for scale in [0.5, 1.0, 1.5]:
-            scaled_img = cv2.resize(img, None, fx=scale, fy=scale, interpolation=cv2.INTER_NEAREST)
+            scaled_img = cv2.resize(img_color, None, fx=scale, fy=scale, interpolation=cv2.INTER_LINEAR)
             _, encoded_scaled = cv2.imencode('.jpg', scaled_img)
+            
             scaled_results = detector.detect(encoded_scaled.tobytes())
+            if scaled_results is None:
+                continue
 
             for res in scaled_results:
                 x, y, w, h = res.bounding_box
