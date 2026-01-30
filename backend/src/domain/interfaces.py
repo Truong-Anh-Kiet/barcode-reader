@@ -49,7 +49,7 @@ class IBarcodeRepository(ABC):
         """
 
     @abstractmethod
-    async def get_all(self) -> List[BarcodeResult]:
+    async def get_all(self, limit: int = 10, offset: int = 0, user_id: Optional[int] = None) -> List[BarcodeResult]:
         """
         Retrieves all saved barcode models.
 
@@ -58,34 +58,29 @@ class IBarcodeRepository(ABC):
         """
 
     @abstractmethod
-    async def delete(self, id: int) -> bool:
-        """
-        Deletes a barcode by its ID.
-        """
+    async def delete(self, id: int, user_id: Optional[int] = None) -> bool:
+        pass
 
     @abstractmethod
-    async def get_by_id(self, id: int) -> Optional[BarcodeResult]:
-        """
-        Retrieves a single barcode by ID.
-        """
+    async def get_by_id(self, id: int, user_id: Optional[int] = None) -> Optional[BarcodeResult]:
+        pass
         
 class IImageStorage(ABC):
     """
     Interface for image storage operations.
-    Defines contract for uploading and managing images.
     """
 
     @abstractmethod
     def upload_image(self, image_data: bytes, filename: str) -> Tuple[str, str]:
         """
-        Uploads image data and returns the secure URL.
+        Uploads image data and returns the secure URL and public_id.
 
         Args:
             image_data (bytes): Raw binary data of the image.
             filename (str): Original filename for reference.
 
         Returns:
-            str: Secure URL of the uploaded image.
+            Tuple[str, str]: Secure URL and public_id of the uploaded image.
         """
 
     @abstractmethod
@@ -106,7 +101,7 @@ class IImageProcessor(ABC):
     """
 
     @abstractmethod
-    def process_image(self, image_data: bytes) -> bytes:
+    def process_image(self, image_data: bytes) -> Tuple[bytes, float]:
         """
         Full preprocessing pipeline: ingestion, resize, grayscale, contrast enhancement,
         noise reduction, adaptive thresholding, edge detection, and perspective fix.
@@ -115,7 +110,7 @@ class IImageProcessor(ABC):
             image_data (bytes): Raw binary data of the image.
 
         Returns:
-            bytes: Processed image data ready for detection.
+            Tuple[bytes, float]: Processed image data and scale factor.
         """
 
     @abstractmethod
@@ -129,20 +124,5 @@ class IImageProcessor(ABC):
 
         Returns:
             bytes: Cropped image data as bytes.
-        """
-
-    @abstractmethod
-    def multi_scale_detect(self,
-                           processed_data: bytes,
-                           detector: IBarcodeDetector) -> List[BarcodeResult]:
-        """
-        Performs detection at multiple scales to handle small/large barcodes.
-
-        Args:
-            processed_data (bytes): Preprocessed image data.
-            detector (IBarcodeDetector): The detector to use.
-
-        Returns:
-            List[BarcodeResult]: Merged detection results from multiple scales.
         """
         

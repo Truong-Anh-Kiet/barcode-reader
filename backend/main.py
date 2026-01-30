@@ -5,17 +5,12 @@ It sets up the necessary dependencies, creates database tables on startup,
 and starts the server using Uvicorn.
 """
 
-import sys
-import os
 import logging
+import yaml
+import logging.config
 from pathlib import Path
 
 from dotenv import load_dotenv
-
-load_dotenv()
-logging.info(".env file loaded successfully")
-
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), 'src')))
 
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Depends
@@ -29,11 +24,18 @@ from fastapi.staticfiles import StaticFiles
 from application.auth import fastapi_users,auth_backend, current_superuser
 
 from application.schemas import UserRead, UserCreate, UserUpdate
+from config.settings import settings
+
+load_dotenv()
+logging.info(".env file loaded successfully")
 
 logging.basicConfig(
     level=logging.WARNING,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
+
+logging_config_path = Path(__file__).parent / "config" / "logging.yaml"
+logging.config.dictConfig(yaml.safe_load(open(logging_config_path)))
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -101,7 +103,7 @@ app.include_router(
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:5173", "your-frontend-url.vercel.app"],
+    allow_origins=settings.FRONTEND_URLS.split(','),
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

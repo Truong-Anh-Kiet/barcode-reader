@@ -4,26 +4,23 @@ Infrastructure layer: Database configuration and models.
 Defines the SQLAlchemy Base, engine, and async session setup for PostgreSQL.
 Also defines the BarcodeModel representing the database table structure.
 """
-import os
-from datetime import datetime, timezone
+import logging
+from datetime import datetime
 from typing import AsyncGenerator, Optional
-from fastapi_users.db import SQLAlchemyBaseUserTable
-from sqlalchemy import ARRAY, DateTime, Integer, String, ForeignKey
+
+from fastapi.params import Depends
+from fastapi_users.db import SQLAlchemyBaseUserTable, SQLAlchemyUserDatabase
+
+from sqlalchemy import ARRAY, DateTime, Integer, String, ForeignKey, func
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import DeclarativeMeta, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+from config.settings import settings
 
-if not DATABASE_URL:
-    raise ValueError(
-        "DATABASE_URL not found in environment variables. "
-        "Please set it in .env file, e.g.: "
-        "DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/dbname"
-    )
+logger = logging.getLogger(__name__)
 
-# Base class for all models
-Base: DeclarativeMeta = declarative_base()
+class Base(DeclarativeBase):
+    pass
 
 class BarcodeModel(Base):
     """
@@ -42,8 +39,8 @@ class BarcodeModel(Base):
     original_public_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     processed_public_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), 
-                                                 default=lambda: datetime.now(timezone.utc), 
-                                                 nullable=False)
+                                                nullable=False,
+                                                server_default=func.now())
     
 class UserModel(Base, SQLAlchemyBaseUserTable[int]):    
     """
@@ -61,9 +58,8 @@ class UserModel(Base, SQLAlchemyBaseUserTable[int]):
     is_premium: Mapped[bool] = mapped_column(default=False)
     country: Mapped[str] = mapped_column(String(50), nullable=False, default="Vietnam")
 
-engine = create_async_engine(DATABASE_URL, echo=False, future=True)
+engine = create_async_engine(settings.DATABASE_URL, echo=False, future=True)
 
-# Async session factory
 AsyncSessionLocal = async_sessionmaker(
     bind=engine,
     class_=AsyncSession,
@@ -75,31 +71,22 @@ AsyncSessionLocal = async_sessionmaker(
 async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
     """
     Dependency provider for FastAPI: yields a new async database session per request.
-
-    Usage in FastAPI:
-        session: AsyncSession = Depends(get_db_session)
-
-    Yields:
-        AsyncSession: Database session for the current request.
     """
     async with AsyncSessionLocal() as session:
         try:
             yield session
             await session.commit()
-        except Exception:
+        except Exception as e:
+            logger.exception(f"DB session error: {e}")
             await session.rollback()
             raise
         finally:
             await session.close()
 
-async def create_tables():
-    """Create all tables in the database if they don't exist."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+async def get_user_db(session: AsyncSession = Depends(get_db_session)):
+    """
+    Get the user database instance.
+    """
+    yield SQLAlchemyUserDatabase(session, UserModel)
 
-if __name__ == "__main__":
-    import asyncio
-
-    asyncio.run(create_tables())
-    print("Tables created successfully!")
     

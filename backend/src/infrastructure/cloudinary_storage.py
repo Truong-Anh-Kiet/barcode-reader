@@ -5,7 +5,6 @@ Provides methods to upload and delete images using Cloudinary cloud storage serv
 following the dependency inversion principle by implementing IImageStorage interface.
 """
 
-import os
 import uuid
 import logging
 
@@ -15,8 +14,8 @@ from cloudinary.exceptions import Error as CloudinaryError
 from typing import Tuple
 
 from domain.interfaces import IImageStorage
+from config.settings import settings
 
-# Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -26,17 +25,13 @@ def configure_cloudinary():
     Call this function in main.py (lifespan startup) or at module level if needed.
     """
 
-    cloud_name = os.getenv("CLOUDINARY_CLOUD_NAME")
-    api_key = os.getenv("CLOUDINARY_API_KEY")
-    api_secret = os.getenv("CLOUDINARY_API_SECRET")
+    cloud_name = settings.CLOUDINARY_CLOUD_NAME
+    api_key = settings.CLOUDINARY_API_KEY
+    api_secret = settings.CLOUDINARY_API_SECRET
 
     if not all([cloud_name, api_key, api_secret]):
         raise ValueError(
-            "Missing Cloudinary credentials in environment variables. "
-            "Please set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET "
-            "in your .env file or environment."
-        )
-
+            "Missing Cloudinary credentials in environment variables. ")
     try:
         cloudinary.config(
             cloud_name=cloud_name,
@@ -49,23 +44,16 @@ def configure_cloudinary():
         logger.error(f"Failed to configure Cloudinary: {str(e)}")
         raise
 
-
 class CloudinaryStorage(IImageStorage):
     """
-    Cloudinary implementation of the image storage service.
-
-    Handles uploading image bytes to Cloudinary and deleting images by public_id.
-    Configuration should be done once via configure_cloudinary() at app startup.
+    Cloudinary implementation of image storage.
+    Handles image uploads and deletions with folder organization.
     """
 
+    ALLOWED_FORMATS = {"jpg", "jpeg", "png", "webp", "gif"}
+
     def __init__(self):
-        """
-        Initialize the storage service.
-        Ensures Cloudinary is configured (fallback check).
-        """
-        if not cloudinary.config().cloud_name:
-            logger.warning("Cloudinary not configured yet. Attempting fallback config.")
-            configure_cloudinary()
+        pass
 
     def upload_image(self, image_data: bytes, filename: str, user_id: int) -> Tuple[str, str]:
         """
@@ -85,30 +73,24 @@ class CloudinaryStorage(IImageStorage):
         Raises:
             ValueError: If upload fails or input invalid.
         """
-        if not image_data or len(image_data) == 0:
-            raise ValueError("Image data cannot be empty")
+        if filename.lower().split(".")[-1] not in self.ALLOWED_FORMATS:
+            raise ValueError(f"Unsupported format. Allowed: {self.ALLOWED_FORMATS}")
 
-        base_name = filename.rsplit('.', 1)[0] if '.' in filename else filename
-        safe_name = "".join(c for c in base_name if c.isalnum() or c in ['-', '_']).strip('_-')
+        public_id = f"barcodes/{uuid.uuid4().hex}_{filename}"
 
-        unique_part = uuid.uuid4().hex[:10]
-        public_id = f"barcodes/user_{user_id}/{unique_part}_{safe_name[:40]}"
         try:
-            result = cloudinary.uploader.upload(
+            response = cloudinary.uploader.upload(
                 image_data,
-                resource_type="image",
+                folder="barcodes",
                 public_id=public_id,
+                resource_type="image",
                 overwrite=False,
-                unique_filename=True,
-                allowed_formats=["jpg", "jpeg", "png", "webp", "gif"],
-                tags=["barcode-scanner", "auto"],
+                quality=92,
             )
-            secure_url = result.get("secure_url")
-            public_id = result["public_id"]
+            secure_url = response.get("secure_url")
             if not secure_url:
-                raise ValueError("No secure_url returned from Cloudinary")
-            
-            logger.info(f"Uploaded image: {public_id} → {secure_url}")
+                raise ValueError("No secure URL returned")
+            logger.info(f"Uploaded {filename} → {secure_url}")
             return secure_url, public_id
 
         except CloudinaryError as e:

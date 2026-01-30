@@ -4,6 +4,7 @@ Application Layer: Business Logic Orchestration.
 Contains the use cases that coordinate domain entities and infrastructure 
 interfaces to perform business operations.
 """
+from asyncio.log import logger
 import logging
 from typing import List
 from domain.entities import BarcodeResult
@@ -44,38 +45,45 @@ class ScanBarcodeUseCase:
         """
         logging.info(f"Starting scan for file: {filename}")
 
-        original_url, original_public_id = self.storage.upload_image(
-            image_data,
-            filename,
-            user.id
-        )
-
-        processed_data = self.processor.process_image(image_data)
-        results = self.processor.multi_scale_detect(processed_data, self.detector)
+        processed_data, scale_factor = self.processor.process_image(image_data)
+        results = self.detector.detect(processed_data)
 
         if not results:
             return []
+        
+        for item in results:
+            x, y, w, h = item.bounding_box
+            item.bounding_box = (
+                int(x * scale_factor),int(y * scale_factor),
+                int(w * scale_factor),int(h * scale_factor))
+            item.user_id = user.id
 
-        boxed_image = self.detector.draw_boxes(image_data, results)
-        boxed_filename = f"boxed_{filename}"
-
-        boxed_url, boxed_public_id = self.storage.upload_image(
-            boxed_image,
-            boxed_filename,
-            user.id
+        original_url, original_public_id = self.storage.upload_image(
+            image_data,
+            filename,
+        )
+        processed_image_data = self.detector.draw_boxes(
+            image_data,
+            results,
+        )
+        processed_url, processed_public_id = self.storage.upload_image(
+            processed_image_data,
+            f"boxed_{filename}",
         )
 
+        saved_results = []
         for item in results:
             item.image_url = original_url
-            item.processed_image_url = boxed_url
+            item.processed_image_url = processed_url
             item.original_public_id = original_public_id
-            item.processed_public_id = boxed_public_id
+            item.processed_public_id = processed_public_id
             item.user_id = user.id
-            await self.repository.save(item)
+            if await self.repository.save(item):
+                saved_results.append(item)
 
-        logging.info(f"Detected {len(results)} barcodes")
-        return results
-
+        logging.info(f"Detected {len(results)} barcodes, {len(saved_results)} saved")
+        return saved_results
+    
 class GetBarcodesUseCase:
     """
     Orchestrates the retrieval of all saved barcode results.
@@ -123,8 +131,14 @@ class DeleteBarcodeUseCase:
         entity = await self.repository.get_by_id(id, user_id=user_id_filter)
         if not entity:
             return False
-        if entity.original_public_id:
-            self.storage.delete_image(entity.original_public_id)
-        if entity.processed_public_id:
-            self.storage.delete_image(entity.processed_public_id)
-        return await self.repository.delete(id, user_id=user_id_filter)
+        try:
+            if entity.original_public_id:
+                if not self.storage.delete_image(entity.original_public_id):
+                    raise ValueError("Failed to delete original image")
+            if entity.processed_public_id:
+                if not self.storage.delete_image(entity.processed_public_id):
+                    raise ValueError("Failed to delete processed image")
+            return await self.repository.delete(id, user_id=user_id_filter)
+        except Exception as e:
+            logger.error(f"Delete failed for barcode {id}: {e}")
+            return False

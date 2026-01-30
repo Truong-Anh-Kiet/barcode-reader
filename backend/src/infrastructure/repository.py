@@ -4,6 +4,8 @@ Infrastructure layer: Database repository implementation.
 Provides methods to persist and retrieve barcode results into a PostgreSQL database 
 using SQLAlchemy AsyncSession.
 """
+import datetime
+from time import timezone
 from typing import List, Optional
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -34,16 +36,6 @@ class PostgresBarcodeRepository(IBarcodeRepository):
         Returns:
             bool: True if the save was successful.
         """
-        # Check duplicate
-        stmt = select(BarcodeModel).where(
-            BarcodeModel.content == barcode.content,
-            BarcodeModel.barcode_type == barcode.barcode_type,
-            BarcodeModel.image_url == barcode.image_url,
-            BarcodeModel.user_id == barcode.user_id
-        )
-        result = await self.session.execute(stmt)
-        if result.scalar_one_or_none():
-            return False
             
         db_item = BarcodeModel(
             content=barcode.content,
@@ -53,10 +45,13 @@ class PostgresBarcodeRepository(IBarcodeRepository):
             image_url=barcode.image_url,
             processed_image_url=barcode.processed_image_url,
             original_public_id=barcode.original_public_id,
-            processed_public_id=barcode.processed_public_id
+            processed_public_id=barcode.processed_public_id,
+            created_at=barcode.created_at or datetime.now(timezone.utc)
         )
         self.session.add(db_item)
         await self.session.commit()
+        barcode.id = db_item.id
+        barcode.created_at = db_item.created_at
         return True
 
     async def get_all(self, limit: int = 10, offset: int = 0, user_id: Optional[int] = None) -> List[BarcodeResult]:
@@ -67,10 +62,9 @@ class PostgresBarcodeRepository(IBarcodeRepository):
         Returns:
             List[BarcodeResult]: List of domain barcode entities.
         """
-        stmt = select(BarcodeModel).order_by(BarcodeModel.created_at.desc())
+        stmt = select(BarcodeModel).limit(limit).offset(offset).order_by(BarcodeModel.created_at.desc())
         if user_id is not None:
             stmt = stmt.where(BarcodeModel.user_id == user_id)
-        stmt = stmt.limit(limit).offset(offset)
         result = await self.session.execute(stmt)
         db_items = result.scalars().all()
         return [

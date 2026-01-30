@@ -1,7 +1,5 @@
 """
-This module defines the BarcodeResult entity, which represents the result of a barcode scan.
-
-Entities are domain objects that hold business data without behavior.
+Domain entities for the barcode scanner application.
 """
 
 from dataclasses import dataclass
@@ -13,17 +11,17 @@ class BarcodeResult:
     """
     Represents the result of a barcode detection.
 
-    This is an immutable dataclass for thread-safety and simplicity.
-
     Attributes:
-        content (str): The decoded content of the barcode.
-        barcode_type (str): The type or format of the barcode (e.g., QR code, Code 128).
-        bounding_box (Tuple[int, int, int, int]): The bounding box of the detected barcode, 
-            represented as a tuple (x, y, width, height).
+        content: Decoded barcode content.
+        barcode_type: Barcode format (e.g., EAN13, QRCode).
+        bounding_box: (x, y, width, height) in pixels.
+        confidence: Detection confidence (0.0-1.0).
+        user_id, image_url, ...: Metadata for persistence.
     """
     content: str
     barcode_type: str
     bounding_box: Tuple[int, int, int, int]
+    confidence: float = 1.0
     user_id: Optional[int] = None
     image_url: Optional[str] = None
     processed_image_url: Optional[str] = None

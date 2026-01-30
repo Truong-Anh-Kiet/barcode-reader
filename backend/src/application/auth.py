@@ -1,5 +1,6 @@
+import re
 import os
-from typing import Optional
+from typing import Optional, Union
 
 from fastapi import Depends, Request, exceptions
 from fastapi_users import FastAPIUsers, IntegerIDMixin, BaseUserManager, models
@@ -12,12 +13,12 @@ from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
 from fastapi_mail import FastMail, ConnectionConfig, MessageSchema, MessageType
 
 from infrastructure.database import UserModel
-from infrastructure.user_db import get_user_db
+from infrastructure.database import get_user_db
 from passlib.context import CryptContext
 
-SECRET = os.getenv("JWT_SECRET")
-if not SECRET:
-    raise ValueError("JWT_SECRET not set!")
+from config.settings import settings
+
+SECRET = settings.JWT_SECRET
 
 pwd_context = CryptContext(schemes=["argon2"], deprecated="auto",
                            argon2__memory_cost=65536,
@@ -45,14 +46,12 @@ class UserManager(IntegerIDMixin, BaseUserManager[UserModel, int]):
     reset_password_token_secret = SECRET
     verification_token_secret = SECRET
 
-    async def validate_password(
-        self,
-        password: str,
-        user: models.UP,
-    ) -> None:
+    async def validate_password(self, password: str, user: Union[models.UC, UserModel]) -> None:
         if len(password) < 8:
-            raise exceptions.InvalidPasswordException("Password should be at least 8 characters")
-
+            raise exceptions.InvalidPasswordException(reason="Password should be at least 8 characters")
+        if not re.match(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$", password):
+            raise exceptions.InvalidPasswordException(reason="Password must contain uppercase, lowercase, number, and special char")
+        
     async def on_after_register(self, user: models.UP, request: Optional[Request] = None):
         print(f"User {user.id} has registered.")
 
@@ -68,7 +67,7 @@ class UserManager(IntegerIDMixin, BaseUserManager[UserModel, int]):
         message = MessageSchema(
             subject="Reset Password Clean Barcode",
             recipients=[user.email],
-            body=f"Password reset token: {token}",
+            body=f"Click to reset password: {settings.FRONTEND_URLS.split(',')[0]}/reset?token={token}",
             subtype=MessageType.plain
         )
         await mail.send_mail(message)
